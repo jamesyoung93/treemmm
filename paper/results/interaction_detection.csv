@@ -1,0 +1,7 @@
+dataset,model,interaction,detected
+pharma,TreeMMM (LightGBM),rep_visitsxsamples,True
+pharma,TreeMMM (LightGBM),dtc_advertisingxrep_visits,True
+pharma,TreeMMM (LightGBM),peer_programsxrep_visits,False
+cpg,TreeMMM (LightGBM),digital_spendxtrade_promo,True
+saas,TreeMMM (LightGBM),content_downloadsxevent_attendance,True
+saas,TreeMMM (LightGBM),csm_meetingsxsdr_outreach,True
