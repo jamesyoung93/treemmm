@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.env
+.claude/
+tmp_*.py
+*_proposer_prompt.md
+PROPOSAL.md
+REVIEW.md
+paper/REVIEW_*.md
+paper/WHITE_PAPER_REVIEW.md
+paper/TreeMMM_White_Paper.pdf
+paper/TreeMMM_White_Paper.html
+requirements-lock.txt
