@@ -87,9 +87,9 @@ def _figure_html(filename: str, caption: str, css_class: str = "fig") -> str:
 
 
 # Section heading -> list of (filename, caption) tuples for the figures
-# that belong with that section. Captions are the canonical ones from
-# the v1 build, lightly edited for the v2 prose constraints (no em
-# dashes, no AI-isms, share-MAPE called out by name).
+# that belong with that section. Captions are lightly rewritten from
+# the v1 build so they name share-MAPE explicitly where the figure
+# shows it.
 PAPER_FIGURES: dict[str, list[tuple[str, str]]] = {
     "### 3.1 Attribution Recovery": [
         (
@@ -461,7 +461,7 @@ def main() -> None:
         refs_block,
     )
     refs_block = re.sub(
-        r"\n\s*\*Foretodata is the author's Substack[^\n]*\n",
+        r"\n\s*\*[^\n]*the author's[^\n]*\n",
         "\n",
         refs_block,
     )
