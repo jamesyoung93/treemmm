@@ -2,6 +2,8 @@
 
 James Young, PhD
 
+<figure class="hero"><img src="figures/fig0_visual_abstract.png" alt="Visual abstract. TreeMMM compared against GLMM-Naive, GLMM-Oracle, and PyMC-Marketing on attribution share-MAPE across the four benchmark DGPs, plus the interaction discovery summary (5 of 6 planted interactions detected without prior specification)."><figcaption>Visual abstract. TreeMMM compared against GLMM-Naive, GLMM-Oracle, and PyMC-Marketing on attribution share-MAPE across the four benchmark DGPs, plus the interaction discovery summary (5 of 6 planted interactions detected without prior specification).</figcaption></figure>
+
 ## 1. Motivation and Scope
 
 ### 1.1 The "Bayesian MMM is superior" claim is regime-conditional
@@ -128,8 +130,9 @@ linear_baseline) are designed to live on the right-hand branch. The
 linear DGP is included as the honesty test. When the data-generating
 process is linear and Gaussian, which is the natural home turf of a
 GLMM or Bayesian regression, TreeMMM should not dominate. The
-benchmark in Section 3 confirms this. GLMM beats TreeMMM by 1.7
-percentage points of MAPE on the linear DGP, the expected result.
+benchmark in Section 3 confirms this. On the linear DGP TreeMMM
+posts 0.3% attribution-share MAPE against GLMM-Naive's 0.1%, the
+expected result for the honesty test.
 
 ### 1.4 Risks of misuse
 
@@ -287,7 +290,7 @@ Both GLMM configurations use statsmodels MixedLM, which fits a Gaussian linear m
 
 **PyMC-Marketing** (PyMC Labs, v0.18): The leading open-source Bayesian MMM, implementing NUTS sampling with geometric adstock and logistic saturation transforms. PyMC-Marketing operates on aggregate time-series (one row per time period) rather than customer-level panel data. To create an apples-to-apples comparison, we aggregate our panel data by summing outcomes and averaging promotional engagement across customers within each period. This aggregation collapses the customer-level heterogeneity that is central to our benchmark DGPs, placing PyMC-Marketing at a structural disadvantage. We use default priors (weakly informative in scaled space), `GeometricAdstock(l_max=4)`, `LogisticSaturation()`, and the NumPyro sampler (500 draws, 500 tuning, 2 chains). Attribution shares are extracted from posterior mean channel contributions via `compute_channel_contribution_original_scale()`.
 
-An exploratory comparison with **DeepCausalMMM** (Tirumala, 2025), a neural MMM combining GRU temporal encoding, learned DAG structure, and Hill saturation curves, is reported in Appendix A. That comparison is presented separately because the data format mismatch (panel data reshaped to 3D tensors) and reduced hyperparameter configuration make it less directly comparable to the regression baselines.
+
 
 ### 2.7 Experimental Design
 
@@ -324,6 +327,8 @@ The pharma DGP includes targeting bias (reps visit high-potential HCPs more) and
 
 #### 2.7.2 Evaluation Metrics
 
+The evaluation has two distinct axes that should not be conflated. Predictive accuracy asks how close the model's outcome predictions are to held-out values, and is summarized by R-squared and weighted MAPE on response-scale predictions. Attribution recovery asks whether the model's decomposition of the outcome onto channels matches the true data-generating process, and is summarized by Mean Absolute Percentage Error on channel shares ("share-MAPE"), Spearman rank correlation, interaction detection, heterogeneous customer sensitivity recovery, and mROI ground-truth alignment. The headline metric in Sections 3.1 to 3.4 is share-MAPE on attribution shares, not predictive MAPE on responses. Section 3.6 covers predictive accuracy separately.
+
 1. **Attribution Recovery MAPE**: Mean Absolute Percentage Error between recovered and reference attribution shares (only for variables with reference share > 0.5%). Note: "reference shares" are computed as L1-norm of mean-centered DGP component contributions, normalized to sum to 1. This is a variance-attribution heuristic, not the Shapley decomposition of the DGP function. Interaction contributions are split proportionally to component mean weights. Different decomposition rules would produce different reference shares (see Section 6.1).
 2. **Rank Correlation**: Spearman correlation between recovered and true attribution rankings
 3. **Interaction Detection**: Whether both variables in a planted interaction exceed 3% SHAP importance
@@ -341,9 +346,14 @@ TreeMMM is trained with LightGBM using 20 Optuna hyperparameter trials per fold,
 
 ### 3.1 Attribution Recovery
 
+<figure class="fig"><img src="figures/fig1_attribution_recovery.png" alt="Figure 1. Attribution recovery across four benchmark DGPs. Left: share-MAPE between recovered and reference channel shares (lower is better). TreeMMM (blue) achieves lower share-MAPE than GLMM-Naive (orange) on all three non-linear datasets. Right: Spearman rank correlation between recovered and true channel rankings."><figcaption>Figure 1. Attribution recovery across four benchmark DGPs. Left: share-MAPE between recovered and reference channel shares (lower is better). TreeMMM (blue) achieves lower share-MAPE than GLMM-Naive (orange) on all three non-linear datasets. Right: Spearman rank correlation between recovered and true channel rankings.</figcaption></figure>
+
+<figure class="fig"><img src="figures/fig2_attribution_shares.png" alt="Figure 2. Attribution shares per channel. Reference shares (gray) versus TreeMMM-recovered shares (blue) for each channel within each dataset, after promo-only renormalization."><figcaption>Figure 2. Attribution shares per channel. Reference shares (gray) versus TreeMMM-recovered shares (blue) for each channel within each dataset, after promo-only renormalization.</figcaption></figure>
+
+
 Table 2 shows attribution recovery across all four datasets and four models. All results are from the full-scale benchmark (3,000 entities x 36 periods). TreeMMM achieves lower attribution error than GLMM-Naive on all three non-linear datasets, with a MAPE ratio of 0.76 (24% improvement). GLMM-Oracle, with perfectly pre-specified interactions, outperforms TreeMMM on CPG and SaaS, establishing the regression ceiling when complete domain knowledge is available. PyMC-Marketing, constrained to 36 aggregate time-series rows, shows substantially higher MAPE across all datasets.
 
-**Table 2: Attribution Recovery Results (Full-Scale: 3,000 Entities x 36 Periods)**
+**Table 2: Attribution Recovery Results (share-MAPE on channel decomposition; Full-Scale 3,000 Entities x 36 Periods)**
 
 | Dataset | TreeMMM MAPE | GLMM-Naive | GLMM-Oracle | PyMC-Marketing | Rank r |
 |---------|:-----------:|:----------:|:-----------:|:-------------:|:------:|
@@ -353,7 +363,7 @@ Table 2 shows attribution recovery across all four datasets and four models. All
 | Linear (Gaussian) | 0.3% | **0.1%** | **0.1%** | 84.3% | 1.000 |
 | **Non-linear avg** | **18.3%** | 24.0% | 17.3% | 69.6% | 0.933 |
 
-**Pooled average** (all four DGPs): TreeMMM 13.8% MAPE, GLMM-Naive 18.1% MAPE, GLMM-Oracle 13.0% MAPE, PyMC-Marketing 73.2% MAPE. The non-linear average (18.3% vs. 24.0%) reflects the setting where TreeMMM's advantage over naive regression is most pronounced. PyMC-Marketing's high MAPE reflects the structural disadvantage of working with 36 aggregate data points rather than 108,000 panel observations. An exploratory comparison with DeepCausalMMM is reported in Appendix A.
+**Pooled average** (all four DGPs): TreeMMM 13.8% MAPE, GLMM-Naive 18.1% MAPE, GLMM-Oracle 13.0% MAPE, PyMC-Marketing 73.2% MAPE. The non-linear average (18.3% vs. 24.0%) reflects the setting where TreeMMM's advantage over naive regression is most pronounced. PyMC-Marketing's high MAPE reflects the structural disadvantage of working with 36 aggregate data points rather than 108,000 panel observations. 
 
 These MAPE figures are relative to an L1-centered variance-attribution heuristic as ground truth, not the Shapley decomposition of the DGP function. A Monte Carlo Shapley ground truth is planned for v0.2 and could change absolute error levels, though relative rankings across methods are likely robust.
 
@@ -366,6 +376,9 @@ Key observations:
 - **Predictive accuracy**: TreeMMM achieves R² > 0.5 on all datasets, including the challenging non-linear DGPs with heteroscedastic, zero-inflated outcomes. GLMM-Naive shows catastrophically negative R² on pharma because the log-transform MixedLM approach is misspecified for count-valued data.
 
 ### 3.2 Interaction Discovery
+
+<figure class="fig"><img src="figures/fig3_interaction_detection.png" alt="Figure 3. Interaction detection across the planted interactions. Green cells indicate detection, red cells indicate missed detection. TreeMMM discovers five of the six planted interactions without prior specification; GLMM-Naive cannot detect interactions it was not configured to model."><figcaption>Figure 3. Interaction detection across the planted interactions. Green cells indicate detection, red cells indicate missed detection. TreeMMM discovers five of the six planted interactions without prior specification; GLMM-Naive cannot detect interactions it was not configured to model.</figcaption></figure>
+
 
 TreeMMM detected 5 of 6 planted interactions across the non-linear datasets (Table 3). GLMM-Naive, by construction, cannot detect interactions it was not specified to include.
 
@@ -388,6 +401,9 @@ This is TreeMMM's core value proposition: automatic interaction discovery withou
 
 ### 3.3 Distribution Matching
 
+<figure class="fig"><img src="figures/fig4_distribution_matching.png" alt="Figure 4. Distribution-aware objective selection. Share-MAPE under the correct objective (green) versus a mismatched Gaussian objective (red) on the pharma DGP, and the mirror comparison on the linear DGP. Correct objective selection reduces share-MAPE by roughly 50 to 56 percent."><figcaption>Figure 4. Distribution-aware objective selection. Share-MAPE under the correct objective (green) versus a mismatched Gaussian objective (red) on the pharma DGP, and the mirror comparison on the linear DGP. Correct objective selection reduces share-MAPE by roughly 50 to 56 percent.</figcaption></figure>
+
+
 The distribution-matching test confirms that selecting the correct objective function matters (Table 4).
 
 **Table 4: Distribution Matching (Correct vs. Mismatched Objective)**
@@ -401,9 +417,15 @@ Using the correct objective improves attribution recovery by 50-56% relative to 
 
 ### 3.4 Heterogeneous Customer Sensitivity Recovery
 
+<figure class="fig"><img src="figures/fig5_hcs_recovery.png" alt="Figure 5. Heterogeneous customer sensitivity recovery. Spearman rho between true latent per-customer sensitivity and recovered mean absolute SHAP, by channel and dataset."><figcaption>Figure 5. Heterogeneous customer sensitivity recovery. Spearman rho between true latent per-customer sensitivity and recovered mean absolute SHAP, by channel and dataset.</figcaption></figure>
+
+
 Customer-level sensitivity recovery shows moderate Spearman correlations, with the strongest recovery on variables with wide heterogeneity across segments. On the CPG dataset, in-store display shows the highest recovery (rho = 0.48), consistent with the wide HCS spread between small stores (sensitivity 1.6) and large stores (0.4). The SaaS dataset shows consistent positive correlations across most channels (rho 0.08-0.27), with CSM meetings and paid search recovering best. Pharma recovery is weaker (rho < 0.14), likely due to the confounding effects of targeting bias: reps visit high-potential HCPs more, which masks the true heterogeneous sensitivity signal.
 
 ### 3.5 Computation Time
+
+<figure class="fig"><img src="figures/fig6_speed_comparison.png" alt="Figure 6. Computation time per dataset for training and attribution. All methods complete within 100 seconds on a consumer laptop at the 3,000 by 36 benchmark scale."><figcaption>Figure 6. Computation time per dataset for training and attribution. All methods complete within 100 seconds on a consumer laptop at the 3,000 by 36 benchmark scale.</figcaption></figure>
+
 
 At the benchmark scale (3,000 entities x 36 periods, 20 Optuna trials), TreeMMM takes 75-99 seconds per dataset on a consumer laptop (including multi-fold SHAP computation). GLMM-Naive takes 27-94 seconds, GLMM-Oracle takes 30-85 seconds. PyMC-Marketing takes 30-39 seconds using the NumPyro JAX-based sampler (500 draws, 500 tuning, 2 chains), comparable to GLMM timing but operating on only 36 aggregate rows. GLMM is faster per run but requires manual specification of interactions and distributional forms for each brand.
 
@@ -415,6 +437,9 @@ The speed comparison is strategically relevant for brand portfolio scaling: an o
 
 ### 3.6 Predictive Accuracy
 
+<figure class="fig"><img src="figures/fig7_predictive_performance.png" alt="Figure 7. Predictive performance on held-out test folds. Left: R-squared per dataset and model. Right: weighted MAPE on response-scale predictions."><figcaption>Figure 7. Predictive performance on held-out test folds. Left: R-squared per dataset and model. Right: weighted MAPE on response-scale predictions.</figcaption></figure>
+
+
 TreeMMM achieves R² > 0.5 on all four datasets: 0.55 (pharma), 0.62 (CPG), 0.58 (SaaS), and 0.95 (linear). The non-linear datasets are genuinely challenging (zero-inflated, heteroscedastic, count-valued outcomes), yet TreeMMM maintains respectable predictive power. GLMM-Naive shows catastrophically negative R² on pharma because the log-transform MixedLM approximation is severely misspecified for count-valued data, and weak R² on CPG (0.23) and SaaS (0.21). GLMM-Oracle achieves R² of 0.43 (CPG) and 0.31 (SaaS), better than naive but still below 0.5.
 
 PyMC-Marketing shows an instructive disconnect between prediction and attribution: it achieves R² = 0.50 on pharma and 0.99 on linear (near-perfect aggregate prediction), yet its attribution MAPE is 83.5% and 84.3% respectively. This demonstrates that predicting aggregate outcomes well does not guarantee correct channel attribution, because the model may attribute outcomes to the wrong channels while still fitting the total correctly. On SaaS, PyMC-Marketing shows negative R² (-0.20), indicating poor aggregate prediction on zero-inflated outcomes.
@@ -422,6 +447,11 @@ PyMC-Marketing shows an instructive disconnect between prediction and attributio
 On the linear dataset, TreeMMM and both GLMMs achieve R² ≈ 0.95, as expected when the model class matches the DGP.
 
 ### 3.7 mROI Ground-Truth Benchmarking
+
+<figure class="fig"><img src="figures/fig8_mroi_response_curves.png" alt="Figure 8. Normalized response curves on the pharma DGP. Each panel shows one channel; curves are indexed to 100 at baseline allocation for shape comparison. DGP ground truth (green), TreeMMM (blue), GLMM-Naive (orange)."><figcaption>Figure 8. Normalized response curves on the pharma DGP. Each panel shows one channel; curves are indexed to 100 at baseline allocation for shape comparison. DGP ground truth (green), TreeMMM (blue), GLMM-Naive (orange).</figcaption></figure>
+
+<figure class="fig"><img src="figures/fig9_mroi_accuracy.png" alt="Figure 9. mROI ground-truth alignment summary. (A) Spearman rank correlation between recovered and true marginal-return rankings. (B) Direction accuracy: share of channels where the model identifies the correct increase or decrease direction. (C) Predicted versus true lift from the optimizer's recommended reallocation."><figcaption>Figure 9. mROI ground-truth alignment summary. (A) Spearman rank correlation between recovered and true marginal-return rankings. (B) Direction accuracy: share of channels where the model identifies the correct increase or decrease direction. (C) Predicted versus true lift from the optimizer's recommended reallocation.</figcaption></figure>
+
 
 Beyond attribution accuracy, a practical MMM must produce **actionable budget recommendations**. We evaluate whether TreeMMM's mROI simulator (which estimates response curves and optimizes promotional reallocation) generates recommendations that align with the true data-generating process (Figures 8–9).
 

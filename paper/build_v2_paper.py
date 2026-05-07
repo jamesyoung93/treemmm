@@ -67,6 +67,130 @@ def _strip_top_h1(md: str) -> str:
     return "\n".join(out)
 
 
+# ---------------------------------------------------------------------------
+# Figure injection
+# ---------------------------------------------------------------------------
+FIGURES_DIR = Path(__file__).resolve().parent / "figures"
+
+
+def _figure_html(filename: str, caption: str, css_class: str = "fig") -> str:
+    """Return a markdown-friendly <figure> block referencing the image
+    by its path relative to the paper directory. The image is embedded
+    as base64 in the rendered HTML by `_render_html`.
+    """
+    return (
+        f'<figure class="{css_class}">'
+        f'<img src="figures/{filename}" alt="{caption}">'
+        f'<figcaption>{caption}</figcaption>'
+        f'</figure>'
+    )
+
+
+# Section heading -> list of (filename, caption) tuples for the figures
+# that belong with that section. Captions are the canonical ones from
+# the v1 build, lightly edited for the v2 prose constraints (no em
+# dashes, no AI-isms, share-MAPE called out by name).
+PAPER_FIGURES: dict[str, list[tuple[str, str]]] = {
+    "### 3.1 Attribution Recovery": [
+        (
+            "fig1_attribution_recovery.png",
+            "Figure 1. Attribution recovery across four benchmark DGPs. "
+            "Left: share-MAPE between recovered and reference channel "
+            "shares (lower is better). TreeMMM (blue) achieves lower "
+            "share-MAPE than GLMM-Naive (orange) on all three "
+            "non-linear datasets. Right: Spearman rank correlation "
+            "between recovered and true channel rankings.",
+        ),
+        (
+            "fig2_attribution_shares.png",
+            "Figure 2. Attribution shares per channel. Reference shares "
+            "(gray) versus TreeMMM-recovered shares (blue) for each "
+            "channel within each dataset, after promo-only "
+            "renormalization.",
+        ),
+    ],
+    "### 3.2 Interaction Discovery": [
+        (
+            "fig3_interaction_detection.png",
+            "Figure 3. Interaction detection across the planted "
+            "interactions. Green cells indicate detection, red cells "
+            "indicate missed detection. TreeMMM discovers five of the "
+            "six planted interactions without prior specification; "
+            "GLMM-Naive cannot detect interactions it was not "
+            "configured to model.",
+        ),
+    ],
+    "### 3.3 Distribution Matching": [
+        (
+            "fig4_distribution_matching.png",
+            "Figure 4. Distribution-aware objective selection. "
+            "Share-MAPE under the correct objective (green) versus a "
+            "mismatched Gaussian objective (red) on the pharma DGP, "
+            "and the mirror comparison on the linear DGP. Correct "
+            "objective selection reduces share-MAPE by roughly 50 to "
+            "56 percent.",
+        ),
+    ],
+    "### 3.4 Heterogeneous Customer Sensitivity Recovery": [
+        (
+            "fig5_hcs_recovery.png",
+            "Figure 5. Heterogeneous customer sensitivity recovery. "
+            "Spearman rho between true latent per-customer sensitivity "
+            "and recovered mean absolute SHAP, by channel and dataset.",
+        ),
+    ],
+    "### 3.5 Computation Time": [
+        (
+            "fig6_speed_comparison.png",
+            "Figure 6. Computation time per dataset for training and "
+            "attribution. All methods complete within 100 seconds on "
+            "a consumer laptop at the 3,000 by 36 benchmark scale.",
+        ),
+    ],
+    "### 3.6 Predictive Accuracy": [
+        (
+            "fig7_predictive_performance.png",
+            "Figure 7. Predictive performance on held-out test folds. "
+            "Left: R-squared per dataset and model. Right: weighted "
+            "MAPE on response-scale predictions.",
+        ),
+    ],
+    "### 3.7 mROI Ground-Truth Benchmarking": [
+        (
+            "fig8_mroi_response_curves.png",
+            "Figure 8. Normalized response curves on the pharma DGP. "
+            "Each panel shows one channel; curves are indexed to 100 "
+            "at baseline allocation for shape comparison. DGP ground "
+            "truth (green), TreeMMM (blue), GLMM-Naive (orange).",
+        ),
+        (
+            "fig9_mroi_accuracy.png",
+            "Figure 9. mROI ground-truth alignment summary. (A) "
+            "Spearman rank correlation between recovered and true "
+            "marginal-return rankings. (B) Direction accuracy: share "
+            "of channels where the model identifies the correct "
+            "increase or decrease direction. (C) Predicted versus "
+            "true lift from the optimizer's recommended reallocation.",
+        ),
+    ],
+}
+
+
+def _inject_figures(md: str) -> str:
+    """Insert figure blocks immediately after each matching section heading."""
+    out_lines: list[str] = []
+    for line in md.splitlines():
+        out_lines.append(line)
+        for heading, figs in PAPER_FIGURES.items():
+            if line.strip() == heading:
+                out_lines.append("")
+                for filename, caption in figs:
+                    out_lines.append(_figure_html(filename, caption))
+                    out_lines.append("")
+                break
+    return "\n".join(out_lines)
+
+
 def _renumber_h2(md: str, mapping: dict[str, str]) -> str:
     """Rewrite top-level section labels.
 
@@ -254,11 +378,62 @@ def main() -> None:
         ("Section 4.3", "Section 3.3"),
         ("Section 4.7", "Section 3.7"),
         ("Section 3.3 for", "Section 2.7.3 for"),
+        # The v2 paper does not include the canonical's Appendix A
+        # (DeepCausalMMM exploratory comparison). Strip the references
+        # to it so the reader is not pointed to a missing appendix.
+        (
+            "An exploratory comparison with **DeepCausalMMM** "
+            "(Tirumala, 2025), a neural MMM combining GRU temporal "
+            "encoding, learned DAG structure, and Hill saturation "
+            "curves, is reported in Appendix A. That comparison is "
+            "presented separately because the data format mismatch "
+            "(panel data reshaped to 3D tensors) and reduced "
+            "hyperparameter configuration make it less directly "
+            "comparable to the regression baselines.",
+            "",
+        ),
+        (
+            "An exploratory comparison with DeepCausalMMM is reported "
+            "in Appendix A.",
+            "",
+        ),
         ("Appendix A for an exploratory comparison with a neural MMM baseline", ""),
         (" and Appendix A for an exploratory comparison with a neural MMM baseline", ""),
     ]
     for needle, replacement in xref_fixes:
         methods_block = methods_block.replace(needle, replacement)
+
+    # Section 2.7.2 Evaluation Metrics: insert a brief preamble that
+    # names the two distinct evaluation axes (predictive accuracy and
+    # attribution recovery) so the reader does not conflate them when
+    # later sections report MAPE without further qualification.
+    eval_preamble = (
+        "The evaluation has two distinct axes that should not be "
+        "conflated. Predictive accuracy asks how close the model's "
+        "outcome predictions are to held-out values, and is summarized "
+        "by R-squared and weighted MAPE on response-scale predictions. "
+        "Attribution recovery asks whether the model's decomposition "
+        "of the outcome onto channels matches the true data-generating "
+        "process, and is summarized by Mean Absolute Percentage Error "
+        "on channel shares (\"share-MAPE\"), Spearman rank correlation, "
+        "interaction detection, heterogeneous customer sensitivity "
+        "recovery, and mROI ground-truth alignment. The headline "
+        "metric in Sections 3.1 to 3.4 is share-MAPE on attribution "
+        "shares, not predictive MAPE on responses. Section 3.6 covers "
+        "predictive accuracy separately.\n\n"
+    )
+    methods_block = methods_block.replace(
+        "#### 2.7.2 Evaluation Metrics\n\n",
+        "#### 2.7.2 Evaluation Metrics\n\n" + eval_preamble,
+    )
+
+    # Section 3.1 table caption: clarify "MAPE" is share-MAPE.
+    methods_block = methods_block.replace(
+        "**Table 2: Attribution Recovery Results "
+        "(Full-Scale: 3,000 Entities x 36 Periods)**",
+        "**Table 2: Attribution Recovery Results "
+        "(share-MAPE on channel decomposition; Full-Scale 3,000 Entities x 36 Periods)**",
+    )
 
     # ----- Section 4: Oracle vs Naive (from oracle_vs_naive_finding.md) -----
     oracle = _read(PAPER_DIR / "oracle_vs_naive_finding.md")
@@ -291,13 +466,32 @@ def main() -> None:
         refs_block,
     )
 
+    # ----- Figure injection -----
+    # Insert paper figures at the corresponding section headings using
+    # HTML <figure> blocks (which pandoc passes through to the rendered
+    # HTML and the playwright PDF). Figure paths are relative to the
+    # paper directory; the HTML rendering step base64-embeds them so
+    # the final HTML is self-contained.
+    methods_block = _inject_figures(methods_block)
+
     # ----- Front matter -----
     # Title and author byline only; no abstract or executive summary
     # before Section 1, so that Motivation and Scope is the first body
-    # section the reader encounters. Affiliation is omitted.
+    # section the reader encounters. Affiliation is omitted. The visual
+    # abstract sits as a hero figure between byline and Section 1.
     front = (
         "# TreeMMM: Tree-Based Market Mix Modeling with SHAP Attribution\n\n"
-        "James Young, PhD\n"
+        "James Young, PhD\n\n"
+        + _figure_html(
+            "fig0_visual_abstract.png",
+            "Visual abstract. TreeMMM compared against GLMM-Naive, "
+            "GLMM-Oracle, and PyMC-Marketing on attribution share-MAPE "
+            "across the four benchmark DGPs, plus the interaction "
+            "discovery summary (5 of 6 planted interactions detected "
+            "without prior specification).",
+            css_class="hero",
+        )
+        + "\n"
     )
 
     # ----- Stitch -----
@@ -506,6 +700,29 @@ th {
 tr:nth-child(even) td { background: #fafafa; }
 img { max-width: 100%; height: auto; }
 
+figure {
+  margin: 1.5rem 0;
+  padding: 0.5rem 0;
+}
+figure.hero {
+  margin: 1.5rem 0 2.5rem 0;
+}
+figure img {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+figcaption {
+  font-family: var(--sans);
+  font-size: 0.88em;
+  color: var(--muted);
+  text-align: left;
+  margin-top: 0.5rem;
+  line-height: 1.45;
+}
+
 /* Print styles */
 @media print {
   body { display: block; font-size: 11pt; }
@@ -526,7 +743,11 @@ img { max-width: 100%; height: auto; }
 
 
 def _render_html(md_body: str) -> None:
-    """Convert markdown to HTML using pandoc, then wrap in our shell."""
+    """Convert markdown to HTML using pandoc, then wrap in our shell.
+
+    Images referenced as ``figures/<file>.png`` are inlined as base64
+    data URIs so the rendered HTML is a single self-contained file.
+    """
     title = "TreeMMM White Paper v2"
     res = subprocess.run(
         ["pandoc", "--from=markdown+pipe_tables+raw_html",
@@ -535,10 +756,26 @@ def _render_html(md_body: str) -> None:
     )
     if res.returncode != 0:
         raise RuntimeError(f"pandoc HTML conversion failed: {res.stderr}")
-    inner_html = res.stdout
+    inner_html = _embed_images(res.stdout)
     out = HTML_TEMPLATE.format(title=title, css=CSS, content=inner_html)
     HTML_OUT.write_text(out, encoding="utf-8")
     print(f"Wrote HTML: {HTML_OUT} ({HTML_OUT.stat().st_size // 1024} KB)")
+
+
+def _embed_images(html: str) -> str:
+    """Replace ``<img src="figures/<file>.png">`` with a base64 data URI."""
+    import base64
+
+    def repl(match: "re.Match[str]") -> str:
+        prefix = match.group(1)
+        filename = match.group(2)
+        path = FIGURES_DIR / filename
+        if not path.exists():
+            return match.group(0)
+        data = base64.b64encode(path.read_bytes()).decode("ascii")
+        return f'{prefix}data:image/png;base64,{data}'
+
+    return re.sub(r'(src=")figures/([^"]+\.png)', repl, html)
 
 
 def _render_pdf(src: Path) -> None:
