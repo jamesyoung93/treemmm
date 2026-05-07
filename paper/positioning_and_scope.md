@@ -124,8 +124,9 @@ linear_baseline) are designed to live on the right-hand branch. The
 linear DGP is included as the honesty test. When the data-generating
 process is linear and Gaussian, which is the natural home turf of a
 GLMM or Bayesian regression, TreeMMM should not dominate. The
-benchmark in Section 3 confirms this. GLMM beats TreeMMM by 1.7
-percentage points of MAPE on the linear DGP, the expected result.
+benchmark in Section 3 confirms this. On the linear DGP TreeMMM
+posts 0.3% attribution-share MAPE against GLMM-Naive's 0.1%, the
+expected result for the honesty test.
 
 ## 4. Risks of misuse, symmetric across paradigms
 
