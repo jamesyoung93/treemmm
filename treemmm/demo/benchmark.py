@@ -32,7 +32,19 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AttributionRecovery:
-    """Attribution recovery metrics for one model."""
+    """Attribution recovery metrics for one model.
+
+    Two share definitions are reported side-by-side:
+
+    * `recovered_shares` / `mape` / `rank_correlation` are computed
+      including the `_base` (intercept) component. This is the "raw"
+      view comparable to early TreeMMM benchmarks.
+    * `recovered_shares_promo_only` / `mape_promo_only` /
+      `rank_correlation_promo_only` exclude `_base` and renormalize
+      promo-channel shares to sum to 1. This matches the methodology
+      used in `paper/run_benchmarks.py` and isolates promo-channel
+      attribution from differences in how each model defines its base.
+    """
 
     model_name: str
     recovered_shares: dict[str, float]
@@ -41,6 +53,11 @@ class AttributionRecovery:
     rank_correlation: float  # Spearman rank correlation of shares
     r2: float  # Predictive R²
     wmape: float  # Weighted MAPE of predictions
+    # Promo-only renormalized share metrics (added in Phase 8)
+    recovered_shares_promo_only: dict[str, float] = field(default_factory=dict)
+    true_shares_promo_only: dict[str, float] = field(default_factory=dict)
+    mape_promo_only: float = 0.0
+    rank_correlation_promo_only: float = 0.0
 
 
 @dataclass
@@ -54,36 +71,48 @@ class BenchmarkResult:
     n_promo_vars: int
 
     def summary(self) -> str:
-        """Human-readable benchmark summary."""
+        """Human-readable benchmark summary with both share definitions."""
+        header = (
+            f"{'Model':<22s} "
+            f"{'MAPE_full':>9s} {'Rank_full':>9s} "
+            f"{'MAPE_promo':>10s} {'Rank_promo':>10s} "
+            f"{'Pred R2':>8s} {'Pred WMAPE':>10s}"
+        )
         lines = [
             f"=== TreeMMM Benchmark: {self.dataset_name} ===",
-            f"Dataset: {self.n_customers} customers × {self.n_periods} periods",
+            f"Dataset: {self.n_customers} customers x {self.n_periods} periods",
             f"Promo vars: {self.n_promo_vars}",
             "",
-            f"{'Model':<20s} {'Attr MAPE':>10s} {'Rank Corr':>10s} {'Pred R²':>8s} {'Pred WMAPE':>10s}",
-            "-" * 62,
+            "Share definitions:",
+            "  *_full   = MAPE/rank vs ground truth, includes _base (intercept) component",
+            "  *_promo  = renormalized over promo channels only (excludes base/controls)",
+            "",
+            header,
+            "-" * len(header),
         ]
-        for r in sorted(self.recoveries, key=lambda x: x.mape):
+        for r in sorted(self.recoveries, key=lambda x: x.mape_promo_only):
             lines.append(
-                f"{r.model_name:<20s} {r.mape:>10.1f}% {r.rank_correlation:>10.3f} "
+                f"{r.model_name:<22s} "
+                f"{r.mape:>8.1f}% {r.rank_correlation:>9.3f} "
+                f"{r.mape_promo_only:>9.1f}% {r.rank_correlation_promo_only:>10.3f} "
                 f"{r.r2:>8.4f} {r.wmape:>10.4f}"
             )
 
         lines.append("")
-        lines.append("--- Ground Truth Attribution Shares ---")
-        # Use any recovery to get the true shares
+        lines.append("--- Ground Truth Promo-Only Shares ---")
         if self.recoveries:
-            true = self.recoveries[0].true_shares
-            for var in sorted(true, key=lambda v: true[v], reverse=True):
-                lines.append(f"  {var:<30s}  {true[var]:5.1f}%")
+            true_p = self.recoveries[0].true_shares_promo_only
+            for var in sorted(true_p, key=lambda v: true_p[v], reverse=True):
+                lines.append(f"  {var:<30s}  {true_p[var] * 100:5.1f}%")
 
         lines.append("")
-        lines.append("--- Recovered Shares (best model) ---")
+        lines.append("--- Recovered Promo-Only Shares (best by promo MAPE) ---")
         if self.recoveries:
-            best = min(self.recoveries, key=lambda r: r.mape)
-            rec = best.recovered_shares
+            best = min(self.recoveries, key=lambda r: r.mape_promo_only)
+            rec = best.recovered_shares_promo_only
+            lines.append(f"  Model: {best.model_name}")
             for var in sorted(rec, key=lambda v: rec[v], reverse=True):
-                lines.append(f"  {var:<30s}  {rec[var]:5.1f}%")
+                lines.append(f"  {var:<30s}  {rec[var] * 100:5.1f}%")
 
         return "\n".join(lines)
 
@@ -95,10 +124,44 @@ class BenchmarkResult:
                 "model": r.model_name,
                 "attribution_mape": r.mape,
                 "rank_correlation": r.rank_correlation,
+                "attribution_mape_promo_only": r.mape_promo_only,
+                "rank_correlation_promo_only": r.rank_correlation_promo_only,
                 "pred_r2": r.r2,
                 "pred_wmape": r.wmape,
             })
         return pd.DataFrame(rows)
+
+
+def _to_promo_only_shares(
+    shares: dict[str, float],
+    promo_vars: list[str],
+) -> dict[str, float]:
+    """Renormalize attribution shares over promo channels only.
+
+    Drops the `_base`, controls, segment vars, and any other non-promo
+    keys, then rescales the remaining shares so they sum to 1.0. This is
+    the same methodology used in `paper/run_benchmarks.py` and isolates
+    the promo-channel attribution from differences in how each model
+    defines its base / intercept.
+    """
+    promo = {v: float(shares.get(v, 0.0)) for v in promo_vars}
+    total = sum(promo.values())
+    if total <= 0:
+        return {v: 0.0 for v in promo_vars}
+    return {v: val / total for v, val in promo.items()}
+
+
+def _attach_promo_only_metrics(
+    recovery: "AttributionRecovery",
+    promo_vars: list[str],
+) -> None:
+    """Compute the promo-only share variant on an AttributionRecovery in place."""
+    rec_p = _to_promo_only_shares(recovery.recovered_shares, promo_vars)
+    true_p = _to_promo_only_shares(recovery.true_shares, promo_vars)
+    recovery.recovered_shares_promo_only = rec_p
+    recovery.true_shares_promo_only = true_p
+    recovery.mape_promo_only = _compute_attribution_mape(rec_p, true_p)
+    recovery.rank_correlation_promo_only = _compute_rank_correlation(rec_p, true_p)
 
 
 def _compute_attribution_mape(
@@ -328,19 +391,249 @@ def _train_and_attribute_glmm(
     return shares, model_result.r2, model_result.wmape
 
 
+def _train_and_attribute_bayesian_ridge(
+    df: pd.DataFrame,
+    config: RunConfig,
+    interaction_terms: list[tuple[str, str]] | None = None,
+    use_log: bool = False,
+    model_name: str = "BayesianRidge",
+) -> tuple[dict[str, float], float, float]:
+    """Train a BayesianRidge baseline and compute coefficient attribution shares.
+
+    Same train/test/CV folds as the GLMM baseline so the comparison is
+    apples-to-apples on attribution recovery.
+    """
+    from treemmm.core.models.bayesian_baseline import build_bayesian_ridge
+
+    feature_cols = config.columns.all_feature_cols()
+    folds = get_splits(
+        df, config.columns.time_col,
+        strategy=config.backtest.value,
+        min_train_frac=config.min_train_frac,
+    )
+
+    full_feature_cols = [config.columns.customer_id] + feature_cols
+    fold_results = []
+    trained = []
+    test_X_sets = []
+
+    for fold in folds:
+        X_train = df.loc[fold.train_mask, full_feature_cols]
+        y_train = df.loc[fold.train_mask, config.columns.outcome_col].values
+        X_test = df.loc[fold.test_mask, full_feature_cols]
+        y_test = df.loc[fold.test_mask, config.columns.outcome_col].values
+
+        model = build_bayesian_ridge(
+            use_log=use_log,
+            interaction_terms=interaction_terms or [],
+            name=model_name,
+        )
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+
+        fold_results.append(FoldResult(
+            fold_idx=fold.fold_idx,
+            train_periods=fold.train_periods,
+            test_periods=fold.test_periods,
+            y_true=y_test,
+            y_pred=y_pred,
+        ))
+        trained.append(model)
+        test_X_sets.append(X_test)
+
+    mr = ModelResult(model_name=model_name, fold_results=fold_results)
+    mr.compute_aggregate_metrics()
+
+    last = trained[-1]
+    all_test_X = pd.concat(test_X_sets, axis=0).reset_index(drop=True)
+    shap_vals = last.get_shap_values(all_test_X)
+    abs_attr = np.sum(np.abs(shap_vals), axis=0)
+    base_abs = abs(last.get_expected_value()) * len(all_test_X)
+    total_abs = abs_attr.sum() + base_abs
+    feat_names = list(all_test_X.columns)
+    shares: dict[str, float] = {"_base": float(base_abs / total_abs) if total_abs > 0 else 0.0}
+    for i, feat in enumerate(feat_names):
+        shares[feat] = float(abs_attr[i] / total_abs) if total_abs > 0 else 0.0
+    return shares, mr.r2, mr.wmape
+
+
+def _train_and_attribute_hybrid(
+    df: pd.DataFrame,
+    config: RunConfig,
+    promo_vars: list[str],
+    controls: list[str],
+    use_log: bool = False,
+    top_k_interactions: int = 3,
+    spline_df: int = 4,
+    model_name: str = "Tree->GLMM",
+) -> tuple[dict[str, float], float, float, list[tuple[str, str]]]:
+    """Train Tree -> GLMM hybrid: tree mines interactions, GLMM smooths.
+
+    Returns:
+        (shares, r2, wmape, discovered_interactions)
+    """
+    from treemmm.core.models.glmm_hybrid import build_tree_glmm_hybrid
+
+    feature_cols = config.columns.all_feature_cols()
+    folds = get_splits(
+        df, config.columns.time_col,
+        strategy=config.backtest.value,
+        min_train_frac=config.min_train_frac,
+    )
+    full_feature_cols = [config.columns.customer_id] + feature_cols
+
+    fold_results = []
+    trained = []
+    test_X_sets = []
+    discovered_pooled: list[tuple[str, str]] = []
+
+    for fold in folds:
+        X_train = df.loc[fold.train_mask, full_feature_cols]
+        y_train = df.loc[fold.train_mask, config.columns.outcome_col].values
+        X_test = df.loc[fold.test_mask, full_feature_cols]
+        y_test = df.loc[fold.test_mask, config.columns.outcome_col].values
+
+        model = build_tree_glmm_hybrid(
+            candidate_features=promo_vars,
+            linear_features=controls,
+            use_log=use_log,
+            group_col=config.columns.customer_id,
+            top_k_interactions=top_k_interactions,
+            spline_df=spline_df,
+            name=model_name,
+        )
+        model.fit(X_train, y_train, n_trials=max(3, config.n_optuna_trials // 2))
+        discovered_pooled = model.discovered_interactions
+        y_pred = model.predict(X_test)
+
+        fold_results.append(FoldResult(
+            fold_idx=fold.fold_idx,
+            train_periods=fold.train_periods,
+            test_periods=fold.test_periods,
+            y_true=y_test,
+            y_pred=y_pred,
+        ))
+        trained.append(model)
+        test_X_sets.append(X_test)
+
+    mr = ModelResult(model_name=model_name, fold_results=fold_results)
+    mr.compute_aggregate_metrics()
+
+    last = trained[-1]
+    all_test_X = pd.concat(test_X_sets, axis=0).reset_index(drop=True)
+    shap_vals = last.get_shap_values(all_test_X)
+    abs_attr = np.sum(np.abs(shap_vals), axis=0)
+    base_abs = abs(last.get_expected_value()) * len(all_test_X)
+    total_abs = abs_attr.sum() + base_abs
+    feat_names = list(all_test_X.columns)
+    shares: dict[str, float] = {"_base": float(base_abs / total_abs) if total_abs > 0 else 0.0}
+    for i, feat in enumerate(feat_names):
+        shares[feat] = float(abs_attr[i] / total_abs) if total_abs > 0 else 0.0
+    return shares, mr.r2, mr.wmape, discovered_pooled
+
+
+def _train_and_attribute_pymc(
+    df: pd.DataFrame,
+    config: RunConfig,
+    interaction_terms: list[tuple[str, str]] | None = None,
+    use_log: bool = False,
+    draws: int = 500,
+    tune: int = 500,
+    chains: int = 2,
+    model_name: str = "PyMC-Bayesian",
+) -> tuple[dict[str, float], float, float]:
+    """Train a PyMC Bayesian baseline and compute attribution shares.
+
+    Skipped at runtime if pymc is unavailable.
+    """
+    from treemmm.core.models.bayesian_baseline import build_pymc_bayesian, is_pymc_available
+    if not is_pymc_available():
+        raise ImportError("pymc not available")
+
+    feature_cols = config.columns.all_feature_cols()
+    folds = get_splits(
+        df, config.columns.time_col,
+        strategy=config.backtest.value,
+        min_train_frac=config.min_train_frac,
+    )
+
+    full_feature_cols = [config.columns.customer_id] + feature_cols
+    fold_results = []
+    trained = []
+    test_X_sets = []
+
+    for fold in folds:
+        X_train = df.loc[fold.train_mask, full_feature_cols]
+        y_train = df.loc[fold.train_mask, config.columns.outcome_col].values
+        X_test = df.loc[fold.test_mask, full_feature_cols]
+        y_test = df.loc[fold.test_mask, config.columns.outcome_col].values
+
+        model = build_pymc_bayesian(
+            use_log=use_log,
+            interaction_terms=interaction_terms or [],
+            draws=draws,
+            tune=tune,
+            chains=chains,
+            name=model_name,
+        )
+        model.fit(X_train, y_train, random_state=config.random_state + fold.fold_idx)
+        y_pred = model.predict(X_test)
+
+        fold_results.append(FoldResult(
+            fold_idx=fold.fold_idx,
+            train_periods=fold.train_periods,
+            test_periods=fold.test_periods,
+            y_true=y_test,
+            y_pred=y_pred,
+        ))
+        trained.append(model)
+        test_X_sets.append(X_test)
+
+    mr = ModelResult(model_name=model_name, fold_results=fold_results)
+    mr.compute_aggregate_metrics()
+
+    last = trained[-1]
+    all_test_X = pd.concat(test_X_sets, axis=0).reset_index(drop=True)
+    shap_vals = last.get_shap_values(all_test_X)
+    abs_attr = np.sum(np.abs(shap_vals), axis=0)
+    base_abs = abs(last.get_expected_value()) * len(all_test_X)
+    total_abs = abs_attr.sum() + base_abs
+    feat_names = list(all_test_X.columns)
+    shares: dict[str, float] = {"_base": float(base_abs / total_abs) if total_abs > 0 else 0.0}
+    for i, feat in enumerate(feat_names):
+        shares[feat] = float(abs_attr[i] / total_abs) if total_abs > 0 else 0.0
+    return shares, mr.r2, mr.wmape
+
+
 def run_benchmark(
     n_customers: int = 100,
     n_periods: int = 12,
     n_optuna_trials: int = 20,
     random_state: int = 42,
+    include_bayesian_ridge: bool = True,
+    include_pymc: bool = True,
+    include_hybrid: bool = True,
+    pymc_draws: int = 300,
+    pymc_tune: int = 300,
+    pymc_chains: int = 2,
+    top_k_interactions: int = 3,
+    spline_df: int = 4,
 ) -> BenchmarkResult:
-    """Run the full benchmark: TreeMMM vs. GLMM (naive + oracle) on pharma data.
+    """Run the full benchmark: TreeMMM vs. GLMM vs. Bayesian baselines.
 
     Args:
         n_customers: Number of HCPs to generate.
         n_periods: Number of monthly periods.
         n_optuna_trials: Optuna budget per fold (lower = faster).
         random_state: Reproducibility seed.
+        include_bayesian_ridge: Add the lightweight sklearn BayesianRidge
+            baseline (always available).
+        include_pymc: Add the PyMC NUTS Bayesian baseline (requires pymc).
+            Off by default — adds ~1-2 minutes per fold without g++.
+        include_hybrid: Add the Tree -> GLMM hybrid that mines interactions
+            from a tree and feeds them to a smooth GLMM.
+        pymc_draws / pymc_tune / pymc_chains: PyMC sampler budget.
+        top_k_interactions: Number of discovered interactions for hybrid.
 
     Returns:
         BenchmarkResult with attribution recovery metrics for each model.
@@ -417,6 +710,98 @@ def run_benchmark(
         r2=oracle_r2,
         wmape=oracle_wmape,
     ))
+
+    use_log_for_baselines = config.objective != Objective.GAUSSIAN
+
+    # --- BayesianRidge (lightweight Bayesian baseline) ---
+    if include_bayesian_ridge:
+        logger.info("Training BayesianRidge (naive)...")
+        bayes_naive_shares, bayes_naive_r2, bayes_naive_wmape = (
+            _train_and_attribute_bayesian_ridge(
+                df, config,
+                interaction_terms=None,
+                use_log=use_log_for_baselines,
+                model_name="BayesianRidge-Naive",
+            )
+        )
+        recoveries.append(AttributionRecovery(
+            model_name="BayesianRidge-Naive",
+            recovered_shares=bayes_naive_shares,
+            true_shares=true_shares,
+            mape=_compute_attribution_mape(bayes_naive_shares, true_shares),
+            rank_correlation=_compute_rank_correlation(bayes_naive_shares, true_shares),
+            r2=bayes_naive_r2,
+            wmape=bayes_naive_wmape,
+        ))
+
+        logger.info("Training BayesianRidge-Oracle...")
+        bayes_oracle_shares, bayes_oracle_r2, bayes_oracle_wmape = (
+            _train_and_attribute_bayesian_ridge(
+                df, config,
+                interaction_terms=oracle_interactions,
+                use_log=use_log_for_baselines,
+                model_name="BayesianRidge-Oracle",
+            )
+        )
+        recoveries.append(AttributionRecovery(
+            model_name="BayesianRidge-Oracle",
+            recovered_shares=bayes_oracle_shares,
+            true_shares=true_shares,
+            mape=_compute_attribution_mape(bayes_oracle_shares, true_shares),
+            rank_correlation=_compute_rank_correlation(bayes_oracle_shares, true_shares),
+            r2=bayes_oracle_r2,
+            wmape=bayes_oracle_wmape,
+        ))
+
+    # --- PyMC full Bayesian (heavy) ---
+    if include_pymc:
+        try:
+            logger.info("Training PyMC-Bayesian (NUTS, naive)...")
+            pymc_shares, pymc_r2, pymc_wmape = _train_and_attribute_pymc(
+                df, config,
+                interaction_terms=None,
+                use_log=use_log_for_baselines,
+                draws=pymc_draws, tune=pymc_tune, chains=pymc_chains,
+                model_name="PyMC-Naive",
+            )
+            recoveries.append(AttributionRecovery(
+                model_name="PyMC-Naive",
+                recovered_shares=pymc_shares,
+                true_shares=true_shares,
+                mape=_compute_attribution_mape(pymc_shares, true_shares),
+                rank_correlation=_compute_rank_correlation(pymc_shares, true_shares),
+                r2=pymc_r2,
+                wmape=pymc_wmape,
+            ))
+        except ImportError as exc:
+            logger.warning("PyMC baseline skipped: %s", exc)
+
+    # --- Tree -> GLMM Hybrid (the new hand-off model) ---
+    if include_hybrid:
+        logger.info("Training Tree->GLMM Hybrid (interaction discovery + smooth GLMM)...")
+        hybrid_shares, hybrid_r2, hybrid_wmape, discovered = _train_and_attribute_hybrid(
+            df, config,
+            promo_vars=promo_vars,
+            controls=ds.columns["control_vars"],
+            use_log=use_log_for_baselines,
+            top_k_interactions=top_k_interactions,
+            spline_df=spline_df,
+            model_name="Tree->GLMM",
+        )
+        recoveries.append(AttributionRecovery(
+            model_name="Tree->GLMM",
+            recovered_shares=hybrid_shares,
+            true_shares=true_shares,
+            mape=_compute_attribution_mape(hybrid_shares, true_shares),
+            rank_correlation=_compute_rank_correlation(hybrid_shares, true_shares),
+            r2=hybrid_r2,
+            wmape=hybrid_wmape,
+        ))
+        logger.info("  Tree-discovered interactions: %s", discovered)
+
+    # Compute promo-only share variants on every recovery
+    for r in recoveries:
+        _attach_promo_only_metrics(r, promo_vars)
 
     return BenchmarkResult(
         recoveries=recoveries,
