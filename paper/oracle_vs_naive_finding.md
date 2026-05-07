@@ -1,18 +1,10 @@
 # When the Oracle Loses to the Naive
 
-This is a paper-ready note on a counterintuitive finding from the Phase
-8 multi-baseline benchmark. It is suitable for the white paper's
-limitations section or a methodological appendix. The note sits inside
-the broader positioning frame of `paper/positioning_and_scope.md`. That
-document explains why TreeMMM operates in the panel-data regime where
-finite-sample bias-variance tradeoffs of this kind are expected. This
-note characterizes one specific tradeoff observed in the Phase 8
-benchmark. Read positioning_and_scope.md first.
-
 ## Finding
 
-In the Phase 8 multi-baseline comparison, GLMM-Oracle (correctly
-specified interactions) and BayesianRidge-Oracle systematically lose to
+In the multi-baseline comparison reported in Section 3, GLMM-Oracle
+(correctly specified interactions) and BayesianRidge-Oracle
+systematically lose to
 their Naive (main-effects-only) counterparts on `MAPE_promo` at the
 default benchmark size of n=200 customers and 18 periods. Across five
 seeds, GLMM-Naive averages 24.7%, GLMM-Oracle 26.2%, BR-Naive 26.0%,
@@ -104,7 +96,8 @@ Generalization to non-pharma DGPs was not tested. The investigation
 used only the pharma DGP (NegBin outcome, channel correlation 0.3,
 dual targeting bias, three interactions all involving rep_visits).
 Whether the CPG (Tweedie), SaaS (ZI-Gamma), or Linear (Gaussian) DGPs
-show the same gap is unconfirmed, and is listed in Phase 9 follow-up.
+show the same gap is unconfirmed, and is listed in the follow-up
+tasks in Section 6.
 
 Whether BayesianRidge's prior damping fully prevents asymptotic bias
 improvement is also open. Its gap narrows but does not reverse at
