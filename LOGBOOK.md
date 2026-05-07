@@ -738,7 +738,7 @@ TreeMMM's nonparametric advantage for complex response surfaces.
 
 **Task**: Research current landscape of MMM tools for TreeMMM benchmark planning (v0.2 BD reviewer requirement).
 
-**Result**: Full scout report at `C:/Users/Admin/research/reviews/scout_report_treemmm_benchmarks_2026-03-03.md`.
+**Result**: Full scout report saved internally (path omitted from public log).
 
 ### Key findings
 
@@ -1096,9 +1096,8 @@ prior shrinks all coefficients including the interaction terms, so its
 Oracle is closer to Naive than the GLMM Oracle is. Whether the prior
 damping fully prevents asymptotic bias improvement is not established
 here. The investigation script `paper/phase8_1_oracle_investigation.py`
-ran to completion in the background while the assistant was idle, and
-outputs in `paper/results/phase8_1_*.csv` are reproducible by re-running
-it. No claim is made about generalization to non-pharma DGPs (CPG,
+is the reproducer for the four CSVs in `paper/results/phase8_1_*.csv`.
+No claim is made about generalization to non-pharma DGPs (CPG,
 SaaS, linear). That is a Phase 8.2 follow-up.
 
 ### Files written

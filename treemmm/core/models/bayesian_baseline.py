@@ -567,7 +567,10 @@ def configure_pytensor_compiler(
         return
 
     if mingw_bin_dir is None:
-        anaconda = _os.environ.get("CONDA_PREFIX", r"C:\Users\Admin\anaconda3")
+        anaconda = _os.environ.get(
+            "CONDA_PREFIX",
+            _os.path.expanduser("~/anaconda3"),
+        )
         mingw_bin_dir = _os.path.join(anaconda, "Library", "mingw-w64", "bin")
     if _os.path.isdir(mingw_bin_dir):
         _os.environ["PATH"] = mingw_bin_dir + _os.pathsep + _os.environ.get("PATH", "")
