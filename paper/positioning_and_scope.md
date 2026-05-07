@@ -1,10 +1,5 @@
 # Motivation and Scope
 
-This section is a drop-in for the white paper. Place it before methods
-and results so the reader knows the regime TreeMMM operates in before
-they see the numbers. It is the authoritative source for the framing.
-Other sections refer back to it rather than restating.
-
 ## 1. The "Bayesian MMM is superior" claim is regime-conditional
 
 The conventional framing that Bayesian methods are the right default
@@ -128,9 +123,9 @@ The four pharma DGPs in the paper (pharma_brand, cpg_brand, saas_brand,
 linear_baseline) are designed to live on the right-hand branch. The
 linear DGP is included as the honesty test. When the data-generating
 process is linear and Gaussian, which is the natural home turf of a
-GLMM or Bayesian regression, TreeMMM should not dominate. Phase 6
-showed it does not. GLMM beat TreeMMM by 1.7 percentage points of MAPE
-on the linear DGP, the expected result.
+GLMM or Bayesian regression, TreeMMM should not dominate. The
+benchmark in Section 3 confirms this. GLMM beats TreeMMM by 1.7
+percentage points of MAPE on the linear DGP, the expected result.
 
 ## 4. Risks of misuse, symmetric across paradigms
 
@@ -153,10 +148,10 @@ accuracy as causal validity.
 Shared failure modes include causal claims from observational data
 without an identification strategy.
 
-Defensible practice in either paradigm comes down to the same handful
-of disciplines. Show the sensitivity. Show the support. Show the
-identifiability. The audit in `LOGBOOK.md` Phase 8.2 documents which of
-these checks the paper has executed and which are deferred.
+Defensible practice in either paradigm comes down to the same set of
+disciplines, namely showing sensitivity, support, and identifiability
+for the recovered effects. Section 5 documents which of these checks
+the paper has executed and which are deferred.
 
 ## 5. Diagnostics worth running
 
@@ -188,9 +183,9 @@ leaves at max depth on the tree side, is informative below roughly
 twenty observations per parameter, where both paradigms are weakly
 identified.
 
-Phase 8.2 of the LOGBOOK contains the audit of which of these the paper
-has executed, which were quickly added to the package, and which remain
-follow-up work.
+Section 5 contains the audit of which of these checks the paper has
+executed, which are runnable from the package as one-line calls, and
+which remain follow-up work.
 
 ## 6. The hybrid frontier
 
@@ -208,16 +203,10 @@ saturation and adstock parameters, then fit a Bayesian model with
 informative priors centered on the tree's estimates and uncertainty
 bands wide enough to discipline. Geo experiments and randomized rep
 tests calibrate either modeling class, with identification coming from
-the experiment rather than the model. TreeMMM's own Tree-to-GLMM hybrid
-(Phase 8) is a simpler variant of the same idea, where the tree mines
-interactions and the smooth GLMM fits them with spline bases and
-per-customer random intercepts.
+the experiment rather than the model. The Tree-to-GLMM hybrid
+introduced in this paper is a simpler variant of the same idea, where
+the tree mines interactions and the smooth GLMM fits them with spline
+bases and per-customer random intercepts.
 
 This paper contributes the panel-MMM tree-based building block. It does
 not claim to resolve the broader identification debate.
-
----
-
-*Written 2026-04-27. The framing in this section is the authoritative
-positioning for the white paper. All results sections should be read in
-its light.*

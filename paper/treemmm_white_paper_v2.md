@@ -1,91 +1,8 @@
 # TreeMMM: Tree-Based Market Mix Modeling with SHAP Attribution
 
-**Working Paper v0.1 (March 2026)**
-
 James Young, PhD
 
-Foretodata*
-
-*Foretodata is the author's Substack and blog on applied machine learning for commercial analytics (foretodata.substack.com).
-
----
-
-**For Decision-Makers**: TreeMMM is a free, open-source tool that answers "how much did each marketing channel contribute to outcomes?" and "where should we move budget to grow?" It works on prescription counts, store revenue, and contract value without requiring a statistician to manually configure each brand. On benchmark data, it finds channel synergies that regression misses, runs in about a minute per brand, and produces budget recommendations validated against known outcomes. It does not replace experiments for causal claims, and all current evidence is from synthetic data.
-
----
-
-## Abstract
-
-Marketing Mix Modeling determines how promotional budgets drive commercial outcomes, but current tools require analysts to manually specify functional forms, interaction terms, and distributional assumptions for every brand. We introduce TreeMMM, a Python package that replaces this manual specification with gradient-boosted trees (LightGBM/XGBoost/CatBoost) and SHAP attribution, discovering non-linear response curves, channel synergies, and outcome distributions from data. SHAP TreeExplainer provides exact Shapley values that are additive on the model's native scale, and a distribution-aware decomposer guarantees attributions sum to predicted outcomes regardless of the objective function (Poisson, Tweedie, Gamma, or Gaussian).
-
-We benchmark TreeMMM against three baselines on four synthetic datasets with known reference decomposition (3,000 entities x 36 periods): a naive GLMM (main effects only), an oracle GLMM (correctly specified interactions), and PyMC-Marketing (the leading open-source Bayesian MMM). TreeMMM achieves 24% lower attribution error than GLMM-Naive across non-linear datasets (18.3% vs. 24.0% MAPE), discovers 5 of 6 planted channel interactions without specification (false positive rate not yet characterized), and produces response curves that closely match the true data-generating process (mROI ranking correlation = 0.96). The oracle GLMM outperforms TreeMMM on two datasets when interactions are perfectly pre-specified (17.3% vs. 18.3% non-linear average), establishing the regression ceiling. PyMC-Marketing, operating on aggregated time-series (36 rows vs. 108,000 panel observations), achieves 69.6% non-linear average MAPE, illustrating the attribution cost of aggregation. On a purely linear DGP, TreeMMM does not invent structure where none exists: both TreeMMM and GLMM achieve near-perfect attribution (0.3% vs. 0.1% MAPE).
-
-Part of TreeMMM's advantage derives from distribution-appropriate objective selection (Poisson for counts, Tweedie for zero-inflated outcomes), not just the tree architecture. The GLMM baseline uses a log-transform workaround rather than a properly specified distributional GLMM, so some of TreeMMM's measured advantage reflects this mismatch. PyMC-Marketing's high MAPE reflects the structural disadvantage of aggregate time-series modeling (36 data points) rather than a limitation of Bayesian methodology; with more time periods or geographic panels, its performance would likely improve. An exploratory comparison with DeepCausalMMM (a GRU-based neural MMM) is reported in Appendix A; it represents, to our knowledge, the first attribution ground-truth evaluation of a neural MMM against known data-generating processes.
-
-We discuss TreeMMM's causal identification position using a five-level spectrum. TreeSHAP's default tree-path-dependent algorithm conditions on the learned data distribution, which avoids impossible feature combinations but does not resolve confounding (Rozenfeld, 2024). When all relevant confounders are observed (conditional exchangeability), these attributions are directionally plausible for budget reallocation; magnitude estimates may be inflated by residual confounding. For launching new channels or settings with severe unobserved confounding, experimental validation remains necessary.
-
-This is a working paper. All results are from synthetic benchmarks with a single random seed and have not been validated on real-world data. The package is available at `pip install treemmm` under the MIT license.
-
-## Executive Summary
-
-Most marketing teams allocate budgets using attribution models that take weeks to build, require a statistician to hand-specify every channel interaction and functional form, and must be rebuilt from scratch for each brand. When assumptions are wrong (and they usually are), the resulting budget recommendations are wrong too.
-
-TreeMMM takes a different approach: gradient-boosted trees with SHAP attribution. It answers two questions -- *How much did each channel actually contribute?* and *Where should we move budget to grow?* -- without requiring the analyst to specify functional forms, interactions, or distributional assumptions. It runs in under two minutes per brand, works across outcome types (prescription counts, store revenue, contract value) with a single configuration, and finds channel interactions that analysts did not think to look for.
-
-**The bottom line**: On a synthetic benchmark pharma brand, TreeMMM's optimizer identified that reallocating 15% of budget from conference sponsorship and peer programs to digital and samples produces **+6.1% lift in prescriptions** from the same total budget. This recommendation was validated against the known data-generating process. The dollar value depends on brand economics; the finding is that TreeMMM correctly identifies *which* channels to increase vs. decrease and *by how much*. All results are synthetic and have not been validated on real-world data (see Section 5.5).
-
-**Illustrative economic value** (hypothetical): For a brand with $10M annual promotional spend and $200M in revenue, a 6.1% lift from budget reallocation represents approximately $12.2M in incremental revenue — from the same total spend. Actual results will vary by brand economics, market dynamics, and the degree to which observational attributions approximate causal effects.
-
-**How TreeMMM compares:**
-
-| Capability | GLMM-Naive | GLMM-Oracle | PyMC-Mktg | TreeMMM |
-|---|---|---|---|---|
-| Interactions | Manual spec | Manual spec | Manual spec | Auto (SHAP): 5/6 |
-| Distribution | Log-transform | Log-transform | Default priors | Native (Pois/Tw/Ga) |
-| MAPE (non-lin avg) | 24.0% | 17.3% | 69.6% | **18.3%** |
-| Data granularity | Panel (108K) | Panel (108K) | Aggregate (36) | Panel (108K) |
-| Time per brand | ~30-55s | ~35-55s | ~30-40s | ~75-95s (20 trials) |
-| Scaling | Re-specify/brand | Perfect knowledge | Re-specify/brand | One config, any |
-| Budget accuracy | Not validated | Not evaluated | Not evaluated | **94% correct** |
-| Interpretability | Coefficients | Coefficients | Posteriors | SHAP: per-cust |
-
-**Key results** on four benchmark datasets (pharma, CPG, SaaS, linear) with known reference decomposition:
-
-- **24% more accurate attribution** than GLMM-Naive on non-linear datasets (18.3% vs. 24.0% MAPE). TreeMMM's advantage is driven by both automatic distribution matching and the ability to capture non-linear response curves without manual specification. The oracle GLMM with perfectly pre-specified interactions achieves a comparable 17.3% average, establishing the regression ceiling when the analyst has complete domain knowledge.
-- **5 of 6 channel interactions discovered automatically** (false positive rate not yet characterized): synergies like "rep visits amplify sample delivery" that regression and Bayesian methods miss entirely unless an analyst specifies them in advance. This is TreeMMM's core practical advantage.
-- **Bayesian MMM comparison**: PyMC-Marketing (69.6% non-linear avg MAPE) struggles on our panel-to-aggregate benchmark because aggregating 3,000 customers into 36 time-series rows collapses the heterogeneity that drives attribution accuracy. This is a structural limitation of aggregate-only MMM, not a failure of Bayesian methodology.
-- **Budget recommendations validated against ground truth**: the optimizer correctly identifies which channels to increase vs. decrease for 94% of channels, and correctly ranks channels by marginal return (correlation = 0.96).
-- **Linear honesty**: On a purely linear DGP, TreeMMM (0.3% MAPE) does not invent non-linearity, confirming it is safe to use as a default approach alongside GLMM (0.1% MAPE).
-
-**When to use what:**
-
-| Your Situation | Recommended Tool |
-|---|---|
-| Strong priors, single brand, need posteriors | PyMC-Marketing or Meridian |
-| Facebook/Meta-heavy media mix | Robyn |
-| Many brands, need speed, want interaction discovery | **TreeMMM** |
-| Count/zero-inflated outcomes (Rx, orders) | **TreeMMM** (distribution-aware objectives) |
-| Strong temporal dynamics, 100+ time periods | Consider neural MMM (see Appendix A) |
-| Regulatory requirement for causal estimates | Geo-experiments + DID |
-
-**Who should consider TreeMMM**: Organizations with multiple promotional channels, panel data (500+ customers x 12+ periods), and a need to scale attribution across a brand portfolio without per-brand statistical modeling. TreeMMM is particularly well-suited for teams that need to onboard new brands quickly and want transparent, auditable attribution at the customer level.
-
-### Key Caveats (Read Before Acting)
-
-1. **Single-seed, synthetic-only**: All results are point estimates from one random seed on synthetic data. Multi-seed confidence intervals and real-world validation are planned for v0.2.
-2. **GLMM baseline is intentionally naive**: It uses a log-transform workaround, not a properly specified distributional GLMM. Part of TreeMMM's 24% advantage comes from distribution-appropriate modeling, not just the tree architecture. A Poisson or Tweedie GLMM would likely narrow the gap.
-3. **PyMC-Marketing comparison is structurally unfair**: 36 aggregate rows vs. 108,000 panel observations, with default (weakly informative) priors. On its native DMA-panel format, PyMC-Marketing achieves contribution recovery errors in the 15–25% range (PyMC Labs, 2025), comparable to TreeMMM's 18.3%. A practitioner would normally provide informative priors, which could substantially improve results. No comparison against Meridian.
-4. **L1-centered ground truth**: The "reference decomposition" is a variance-attribution heuristic, not the Shapley decomposition of the DGP function.
-5. **Predictive, not causal**: TreeMMM produces observational conditional attributions, not experimentally validated causal effects.
-
-See Section 5.5 for full limitations and Appendix A for an exploratory comparison with a neural MMM baseline.
-
 ## 1. Motivation and Scope
-
-This section is a drop-in for the white paper. Place it before methods
-and results so the reader knows the regime TreeMMM operates in before
-they see the numbers. It is the authoritative source for the framing.
-Other sections refer back to it rather than restating.
 
 ### 1.1 The "Bayesian MMM is superior" claim is regime-conditional
 
@@ -210,9 +127,9 @@ The four pharma DGPs in the paper (pharma_brand, cpg_brand, saas_brand,
 linear_baseline) are designed to live on the right-hand branch. The
 linear DGP is included as the honesty test. When the data-generating
 process is linear and Gaussian, which is the natural home turf of a
-GLMM or Bayesian regression, TreeMMM should not dominate. Phase 6
-showed it does not. GLMM beat TreeMMM by 1.7 percentage points of MAPE
-on the linear DGP, the expected result.
+GLMM or Bayesian regression, TreeMMM should not dominate. The
+benchmark in Section 3 confirms this. GLMM beats TreeMMM by 1.7
+percentage points of MAPE on the linear DGP, the expected result.
 
 ### 1.4 Risks of misuse
 
@@ -235,10 +152,10 @@ accuracy as causal validity.
 Shared failure modes include causal claims from observational data
 without an identification strategy.
 
-Defensible practice in either paradigm comes down to the same handful
-of disciplines. Show the sensitivity. Show the support. Show the
-identifiability. The audit in `LOGBOOK.md` Phase 8.2 documents which of
-these checks the paper has executed and which are deferred.
+Defensible practice in either paradigm comes down to the same set of
+disciplines, namely showing sensitivity, support, and identifiability
+for the recovered effects. Section 5 documents which of these checks
+the paper has executed and which are deferred.
 
 ### 1.5 Diagnostics worth running
 
@@ -270,9 +187,9 @@ leaves at max depth on the tree side, is informative below roughly
 twenty observations per parameter, where both paradigms are weakly
 identified.
 
-Phase 8.2 of the LOGBOOK contains the audit of which of these the paper
-has executed, which were quickly added to the package, and which remain
-follow-up work.
+Section 5 contains the audit of which of these checks the paper has
+executed, which are runnable from the package as one-line calls, and
+which remain follow-up work.
 
 ### 1.6 The hybrid frontier
 
@@ -290,19 +207,13 @@ saturation and adstock parameters, then fit a Bayesian model with
 informative priors centered on the tree's estimates and uncertainty
 bands wide enough to discipline. Geo experiments and randomized rep
 tests calibrate either modeling class, with identification coming from
-the experiment rather than the model. TreeMMM's own Tree-to-GLMM hybrid
-(Phase 8) is a simpler variant of the same idea, where the tree mines
-interactions and the smooth GLMM fits them with spline bases and
-per-customer random intercepts.
+the experiment rather than the model. The Tree-to-GLMM hybrid
+introduced in this paper is a simpler variant of the same idea, where
+the tree mines interactions and the smooth GLMM fits them with spline
+bases and per-customer random intercepts.
 
 This paper contributes the panel-MMM tree-based building block. It does
 not claim to resolve the broader identification debate.
-
----
-
-*Written 2026-04-27. The framing in this section is the authoritative
-positioning for the white paper. All results sections should be read in
-its light.*
 
 ## 2. Methods
 
@@ -372,7 +283,7 @@ We compare TreeMMM against three baselines representing different modeling parad
 
 **GLMM-Oracle**: Correctly specified interaction terms matching the DGP (statsmodels MixedLM). Represents an analyst with perfect knowledge of which variables interact, but without distributional family matching.
 
-Both GLMM configurations use statsmodels MixedLM, which fits a Gaussian linear mixed model. For the linear dataset, the GLMM is fitted on the raw outcome. For non-Gaussian datasets (pharma, CPG, SaaS), the benchmark log-transforms the outcome variable before fitting, which approximates a log-normal model. This is a common workaround; while statsmodels does offer `PoissonBayesMixedGLM`, it uses a variational Bayes approximation that is not directly comparable to the frequentist MixedLM, and Tweedie/Gamma mixed models are not available. A properly specified distributional GLMM (e.g., `glmmTMB` in R) is not equivalent to the log-transform workaround used here. A properly specified Poisson or Tweedie GLMM would likely narrow the performance gap. We discuss this limitation explicitly in Section 5.5.
+Both GLMM configurations use statsmodels MixedLM, which fits a Gaussian linear mixed model. For the linear dataset, the GLMM is fitted on the raw outcome. For non-Gaussian datasets (pharma, CPG, SaaS), the benchmark log-transforms the outcome variable before fitting, which approximates a log-normal model. This is a common workaround; while statsmodels does offer `PoissonBayesMixedGLM`, it uses a variational Bayes approximation that is not directly comparable to the frequentist MixedLM, and Tweedie/Gamma mixed models are not available. A properly specified distributional GLMM (e.g., `glmmTMB` in R) is not equivalent to the log-transform workaround used here. A properly specified Poisson or Tweedie GLMM would likely narrow the performance gap. We discuss this limitation explicitly in Section 6.
 
 **PyMC-Marketing** (PyMC Labs, v0.18): The leading open-source Bayesian MMM, implementing NUTS sampling with geometric adstock and logistic saturation transforms. PyMC-Marketing operates on aggregate time-series (one row per time period) rather than customer-level panel data. To create an apples-to-apples comparison, we aggregate our panel data by summing outcomes and averaging promotional engagement across customers within each period. This aggregation collapses the customer-level heterogeneity that is central to our benchmark DGPs, placing PyMC-Marketing at a structural disadvantage. We use default priors (weakly informative in scaled space), `GeometricAdstock(l_max=4)`, `LogisticSaturation()`, and the NumPyro sampler (500 draws, 500 tuning, 2 chains). Attribution shares are extracted from posterior mean channel contributions via `compute_channel_contribution_original_scale()`.
 
@@ -413,7 +324,7 @@ The pharma DGP includes targeting bias (reps visit high-potential HCPs more) and
 
 #### 2.7.2 Evaluation Metrics
 
-1. **Attribution Recovery MAPE**: Mean Absolute Percentage Error between recovered and reference attribution shares (only for variables with reference share > 0.5%). Note: "reference shares" are computed as L1-norm of mean-centered DGP component contributions, normalized to sum to 1. This is a variance-attribution heuristic, not the Shapley decomposition of the DGP function. Interaction contributions are split proportionally to component mean weights. Different decomposition rules would produce different reference shares (see Section 5.5.2).
+1. **Attribution Recovery MAPE**: Mean Absolute Percentage Error between recovered and reference attribution shares (only for variables with reference share > 0.5%). Note: "reference shares" are computed as L1-norm of mean-centered DGP component contributions, normalized to sum to 1. This is a variance-attribution heuristic, not the Shapley decomposition of the DGP function. Interaction contributions are split proportionally to component mean weights. Different decomposition rules would produce different reference shares (see Section 6.1).
 2. **Rank Correlation**: Spearman correlation between recovered and true attribution rankings
 3. **Interaction Detection**: Whether both variables in a planted interaction exceed 3% SHAP importance
 4. **HCS Recovery**: Spearman correlation between true latent customer sensitivity and customer-level mean |SHAP|
@@ -422,7 +333,7 @@ The pharma DGP includes targeting bias (reps visit high-potential HCPs more) and
 
 #### 2.7.3 Benchmark Configuration
 
-TreeMMM is trained with LightGBM using 20 Optuna hyperparameter trials per fold, searching over learning rate, number of leaves, minimum child samples, L1/L2 regularization, and feature/bagging fractions. Maximum tree depth is constrained to [3, 5] and monotone constraints are enabled for all promotional variables (non-negative effect direction). Attribution MAPE is computed by comparing L1-centered SHAP-derived channel shares against L1-centered ground-truth shares, both on the margin (log/link) scale, which is methodologically consistent with SHAP's native decomposition on the model's link function. Sensitivity to these choices (number of trials, depth range, monotone constraints) is not explored in this paper and is flagged as a limitation in Section 5.5.
+TreeMMM is trained with LightGBM using 20 Optuna hyperparameter trials per fold, searching over learning rate, number of leaves, minimum child samples, L1/L2 regularization, and feature/bagging fractions. Maximum tree depth is constrained to [3, 5] and monotone constraints are enabled for all promotional variables (non-negative effect direction). Attribution MAPE is computed by comparing L1-centered SHAP-derived channel shares against L1-centered ground-truth shares, both on the margin (log/link) scale, which is methodologically consistent with SHAP's native decomposition on the model's link function. Sensitivity to these choices (number of trials, depth range, monotone constraints) is not explored in this paper and is flagged as a limitation in Section 6.
 
 ## 3. Benchmark Results
 
@@ -546,19 +457,11 @@ The most dramatic failure is on pharma, where GLMM ranks channels by marginal re
 
 ## 4. Oracle vs Naive Investigation
 
-This is a paper-ready note on a counterintuitive finding from the Phase
-8 multi-baseline benchmark. It is suitable for the white paper's
-limitations section or a methodological appendix. The note sits inside
-the broader positioning frame of `paper/positioning_and_scope.md`. That
-document explains why TreeMMM operates in the panel-data regime where
-finite-sample bias-variance tradeoffs of this kind are expected. This
-note characterizes one specific tradeoff observed in the Phase 8
-benchmark. Read positioning_and_scope.md first.
-
 ### 4.1 The Finding
 
-In the Phase 8 multi-baseline comparison, GLMM-Oracle (correctly
-specified interactions) and BayesianRidge-Oracle systematically lose to
+In the multi-baseline comparison reported in Section 3, GLMM-Oracle
+(correctly specified interactions) and BayesianRidge-Oracle
+systematically lose to
 their Naive (main-effects-only) counterparts on `MAPE_promo` at the
 default benchmark size of n=200 customers and 18 periods. Across five
 seeds, GLMM-Naive averages 24.7%, GLMM-Oracle 26.2%, BR-Naive 26.0%,
@@ -650,7 +553,8 @@ Generalization to non-pharma DGPs was not tested. The investigation
 used only the pharma DGP (NegBin outcome, channel correlation 0.3,
 dual targeting bias, three interactions all involving rep_visits).
 Whether the CPG (Tweedie), SaaS (ZI-Gamma), or Linear (Gaussian) DGPs
-show the same gap is unconfirmed, and is listed in Phase 9 follow-up.
+show the same gap is unconfirmed, and is listed in the follow-up
+tasks in Section 6.
 
 Whether BayesianRidge's prior damping fully prevents asymptotic bias
 improvement is also open. Its gap narrows but does not reverse at
@@ -710,18 +614,18 @@ estimator count is warranted.
 
 ### 5.4 What the audit looked at, and what is deferred
 
-The Phase 8.2 audit consolidated in `LOGBOOK.md` documents each of
-the five diagnostics in turn. Three are demonstrated by the package.
-Two more (Bayesian prior-variance sensitivity and treatment-overlap
-propensity-score checks) are not yet implemented, and SHAP attribution
-stability under collinearity is checked only implicitly through the
-multi-seed reproducer in Section 4. Each gap is listed in Section 6.
+The audit summarized below documents each of the five diagnostics in
+turn. Three are demonstrated by the package. Two more (Bayesian
+prior-variance sensitivity and treatment-overlap propensity-score
+checks) are not yet implemented, and SHAP attribution stability under
+collinearity is checked only implicitly through the multi-seed
+reproducer in Section 4. Each gap is listed in Section 6.
 
 The diagnostics are callable but are not yet wired into the headline
 benchmark report (`paper/run_benchmarks.py`). A practitioner using
 `treemmm.run()` does not automatically receive a coverage report on
 their counterfactuals. Wiring is a small follow-up of about half a
-day. It is included in the Phase 9 list.
+day. It is included in the follow-up list in Section 6.
 
 ## 6. Limitations and Follow-Up Work
 
@@ -731,21 +635,20 @@ All results in this paper come from synthetic benchmarks with a small
 number of seeds. Real-world validation has not been carried out. The
 Bayesian baselines (`BayesianRidgeMMM` and `PyMCBayesianMMM`) are
 pooled rather than hierarchical, which puts them at a structural
-disadvantage on panel data; a hierarchical PyMC variant with
+disadvantage on panel data. A hierarchical PyMC variant with
 per-customer random intercepts is the appropriate aggregation-matched
-comparison and is listed below as Phase 9 work. The Tree-to-GLMM
+comparison and is listed below as follow-up work. The Tree-to-GLMM
 hybrid uses a B-spline basis with `df=4` on each promo channel and
-includes the top three discovered interactions; the spline degrees
-of freedom and the interaction-count threshold have not been swept,
-and either could be tuned per dataset. The MAPE_promo regime in which
+includes the top three discovered interactions. The spline degrees of
+freedom and the interaction-count threshold have not been swept, and
+either could be tuned per dataset. The MAPE_promo regime in which
 Oracle underperforms Naive at moderate n is documented in Section 4
 and is treated there as a feature of the metric rather than a
 deficiency of the Oracle specification.
 
-### 6.2 Phase 9 follow-up tasks
+### 6.2 Follow-up tasks
 
-The complete follow-up list, consolidated from the Phase 8.1 and 8.2
-audits, is reproduced here for reference. Each item is independent of
+The list below is reproduced for reference. Each item is independent of
 the others and can be tackled in isolation.
 
 1. Hierarchical PyMC variant with per-customer random intercepts, so
@@ -765,7 +668,7 @@ the others and can be tackled in isolation.
 6. Wire the three quick-add diagnostics from `regime_check.py` into
    `paper/run_benchmarks.py`, so the headline benchmark CSVs include
    coverage, variation, and ESS columns by default.
-7. Generalize the Phase 8.1 Oracle-vs-Naive investigation to the CPG
+7. Generalize the Section 4 Oracle-vs-Naive investigation to the CPG
    (Tweedie), SaaS (ZI-Gamma), and linear (Gaussian) DGPs.
 
 ### 6.3 What this paper does not claim
@@ -805,10 +708,4 @@ which the paper's results apply and the regimes in which they do not.
 
 **Code availability**: https://github.com/jamesyoung93/treemmm (MIT License)
 
-**Corresponding author**: james@foretodata.com
-
 ---
-
----
-
-*Built from `paper/positioning_and_scope.md`, `paper/TreeMMM_White_Paper.md` (Methods, Experimental Design, Results, References), `paper/oracle_vs_naive_finding.md`, and `paper/build_v2_paper.py`. See `LOGBOOK.md` Phase 8.2 for the diagnostics audit.*

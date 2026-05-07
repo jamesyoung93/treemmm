@@ -138,18 +138,18 @@ estimator count is warranted.
 
 ### 5.4 What the audit looked at, and what is deferred
 
-The Phase 8.2 audit consolidated in `LOGBOOK.md` documents each of
-the five diagnostics in turn. Three are demonstrated by the package.
-Two more (Bayesian prior-variance sensitivity and treatment-overlap
-propensity-score checks) are not yet implemented, and SHAP attribution
-stability under collinearity is checked only implicitly through the
-multi-seed reproducer in Section 4. Each gap is listed in Section 6.
+The audit summarized below documents each of the five diagnostics in
+turn. Three are demonstrated by the package. Two more (Bayesian
+prior-variance sensitivity and treatment-overlap propensity-score
+checks) are not yet implemented, and SHAP attribution stability under
+collinearity is checked only implicitly through the multi-seed
+reproducer in Section 4. Each gap is listed in Section 6.
 
 The diagnostics are callable but are not yet wired into the headline
 benchmark report (`paper/run_benchmarks.py`). A practitioner using
 `treemmm.run()` does not automatically receive a coverage report on
 their counterfactuals. Wiring is a small follow-up of about half a
-day. It is included in the Phase 9 list.
+day. It is included in the follow-up list in Section 6.
 """
 
 
@@ -164,21 +164,20 @@ All results in this paper come from synthetic benchmarks with a small
 number of seeds. Real-world validation has not been carried out. The
 Bayesian baselines (`BayesianRidgeMMM` and `PyMCBayesianMMM`) are
 pooled rather than hierarchical, which puts them at a structural
-disadvantage on panel data; a hierarchical PyMC variant with
+disadvantage on panel data. A hierarchical PyMC variant with
 per-customer random intercepts is the appropriate aggregation-matched
-comparison and is listed below as Phase 9 work. The Tree-to-GLMM
+comparison and is listed below as follow-up work. The Tree-to-GLMM
 hybrid uses a B-spline basis with `df=4` on each promo channel and
-includes the top three discovered interactions; the spline degrees
-of freedom and the interaction-count threshold have not been swept,
-and either could be tuned per dataset. The MAPE_promo regime in which
+includes the top three discovered interactions. The spline degrees of
+freedom and the interaction-count threshold have not been swept, and
+either could be tuned per dataset. The MAPE_promo regime in which
 Oracle underperforms Naive at moderate n is documented in Section 4
 and is treated there as a feature of the metric rather than a
 deficiency of the Oracle specification.
 
-### 6.2 Phase 9 follow-up tasks
+### 6.2 Follow-up tasks
 
-The complete follow-up list, consolidated from the Phase 8.1 and 8.2
-audits, is reproduced here for reference. Each item is independent of
+The list below is reproduced for reference. Each item is independent of
 the others and can be tackled in isolation.
 
 1. Hierarchical PyMC variant with per-customer random intercepts, so
@@ -198,7 +197,7 @@ the others and can be tackled in isolation.
 6. Wire the three quick-add diagnostics from `regime_check.py` into
    `paper/run_benchmarks.py`, so the headline benchmark CSVs include
    coverage, variation, and ESS columns by default.
-7. Generalize the Phase 8.1 Oracle-vs-Naive investigation to the CPG
+7. Generalize the Section 4 Oracle-vs-Naive investigation to the CPG
    (Tweedie), SaaS (ZI-Gamma), and linear (Gaussian) DGPs.
 
 ### 6.3 What this paper does not claim
@@ -246,6 +245,21 @@ def main() -> None:
     methods_block = methods_block.replace("### 4.6 Predictive Accuracy", "### 3.6 Predictive Accuracy")
     methods_block = methods_block.replace("### 4.7 mROI Ground-Truth Benchmarking", "### 3.7 mROI Ground-Truth Benchmarking")
 
+    # Cross-reference fixes from canonical numbering to v2 numbering.
+    # Order matters (longer keys first to avoid prefix collisions).
+    xref_fixes = [
+        ("Section 5.5.1", "Section 6.1"),
+        ("Section 5.5.2", "Section 6.1"),
+        ("Section 5.5", "Section 6"),
+        ("Section 4.3", "Section 3.3"),
+        ("Section 4.7", "Section 3.7"),
+        ("Section 3.3 for", "Section 2.7.3 for"),
+        ("Appendix A for an exploratory comparison with a neural MMM baseline", ""),
+        (" and Appendix A for an exploratory comparison with a neural MMM baseline", ""),
+    ]
+    for needle, replacement in xref_fixes:
+        methods_block = methods_block.replace(needle, replacement)
+
     # ----- Section 4: Oracle vs Naive (from oracle_vs_naive_finding.md) -----
     oracle = _read(PAPER_DIR / "oracle_vs_naive_finding.md")
     oracle_body = _strip_top_h1(oracle)
@@ -264,16 +278,27 @@ def main() -> None:
     # ----- Section 7: References (from canonical paper) -----
     refs_block = _extract_sections(canon, "## References", "## Appendix A")
     refs_block = refs_block.replace("## References", "## 7. References", 1)
+    # Drop affiliation-bearing lines per the request to keep the byline
+    # at the top of the document only.
+    refs_block = re.sub(
+        r"\n\s*\*\*Corresponding author\*\*:.*?\n",
+        "\n",
+        refs_block,
+    )
+    refs_block = re.sub(
+        r"\n\s*\*Foretodata is the author's Substack[^\n]*\n",
+        "\n",
+        refs_block,
+    )
 
-    # ----- Front matter (title + author + abstract) -----
-    # Everything from the start of the canonical paper to "## 1. Introduction".
-    intro_idx = canon.find("## 1. Introduction")
-    if intro_idx < 0:
-        raise ValueError("Could not find '## 1. Introduction' in canonical paper")
-    front = canon[:intro_idx].rstrip() + "\n"
-    # We replace the canonical Introduction with our own Section 1
-    # (Motivation and Scope). The existing Abstract and Executive
-    # Summary come along inside `front`.
+    # ----- Front matter -----
+    # Title and author byline only; no abstract or executive summary
+    # before Section 1, so that Motivation and Scope is the first body
+    # section the reader encounters. Affiliation is omitted.
+    front = (
+        "# TreeMMM: Tree-Based Market Mix Modeling with SHAP Attribution\n\n"
+        "James Young, PhD\n"
+    )
 
     # ----- Stitch -----
     body = "\n\n".join([
@@ -285,16 +310,7 @@ def main() -> None:
         section_6.rstrip(),
         refs_block.rstrip(),
     ])
-
-    # Add a build-stamp footer
-    body += (
-        "\n\n---\n\n"
-        "*Built from `paper/positioning_and_scope.md`, "
-        "`paper/TreeMMM_White_Paper.md` (Methods, Experimental Design, "
-        "Results, References), `paper/oracle_vs_naive_finding.md`, and "
-        "`paper/build_v2_paper.py`. See `LOGBOOK.md` Phase 8.2 for the "
-        "diagnostics audit.*\n"
-    )
+    body += "\n"
 
     SRC_OUT.write_text(body, encoding="utf-8")
     print(f"Wrote assembled markdown: {SRC_OUT}")
@@ -526,15 +542,58 @@ def _render_html(md_body: str) -> None:
 
 
 def _render_pdf(src: Path) -> None:
-    """Render a PDF using fpdf2 from the assembled markdown.
+    """Render a PDF by printing the rendered HTML through headless Chromium.
 
-    fpdf2 is a pure-Python PDF library that accepts a constrained subset
-    of HTML. Producing a polished PDF this way avoids the
-    pandoc + MiKTeX install-on-demand path which can stall on first run.
-    The resulting PDF is text-only (no embedded figures) by design;
-    the v1 canonical paper at TreeMMM_White_Paper.pdf retains the
-    figure-embedded version for visual reference.
+    The HTML's `@media print` rules drop the sidebar and reset the column
+    width, so the resulting PDF inherits the same typography, tables, and
+    math as the on-screen HTML. This requires `playwright` and a Chromium
+    install. If either is missing the function reports the gap and skips,
+    leaving the HTML as the primary deliverable.
     """
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        print(
+            "playwright not available; skipping PDF. To produce a PDF, "
+            "install with `pip install playwright && playwright install "
+            "chromium` and re-run this script."
+        )
+        return
+
+    if not HTML_OUT.exists():
+        print(f"HTML not found at {HTML_OUT}; skipping PDF.")
+        return
+
+    file_url = HTML_OUT.resolve().as_uri()
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page()
+            page.goto(file_url, wait_until="networkidle")
+            # Give KaTeX a moment to render any equations before printing.
+            page.wait_for_timeout(500)
+            page.pdf(
+                path=str(PDF_OUT),
+                format="Letter",
+                print_background=True,
+                margin={"top": "0.75in", "bottom": "0.75in",
+                        "left": "0.75in", "right": "0.75in"},
+            )
+            browser.close()
+    except Exception as exc:
+        msg = str(exc).encode("ascii", "replace").decode("ascii")
+        print(
+            f"playwright PDF render failed: {msg}\n"
+            "Skipping PDF. Open the HTML in a browser and use File -> "
+            "Print -> Save as PDF as a manual fallback."
+        )
+        return
+
+    print(f"Wrote PDF: {PDF_OUT} ({PDF_OUT.stat().st_size // 1024} KB)")
+
+
+def _legacy_render_pdf_fpdf2_unused(src: Path) -> None:
+    """Old fpdf2 path, retained for reference only."""
     try:
         from fpdf import FPDF
         import markdown as md_lib
