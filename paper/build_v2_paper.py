@@ -1,11 +1,19 @@
 """Assemble and render TreeMMM White Paper v2 (IJF-format).
 
-The canonical source is TreeMMM_White_Paper.md which already has the
-IJF section structure (1-Introduction, 2-Related Work, 3-Methodology,
-4-Data and Experimental Design, 5-Results, 6-Discussion, 7-Conclusion,
-Appendices A-D). This builder reads the canonical source directly,
-injects figures at the correct section headings, applies cross-reference
-fixes for the v2 numbering, and renders to:
+The canonical source is TreeMMM_White_Paper.md, which after the May
+2026 reorg has the section structure:
+
+    1. Introduction (merged with positioning_and_scope motivation)
+    2. Related Work
+    3. Data and Experimental Design
+    4. Results
+    5. Discussion
+    6. Conclusion
+    7. Methodology  (moved to end so practitioners reach Results first)
+    Appendices A-D
+
+This builder reads the canonical source directly, injects figures at
+the correct section headings, and renders to:
 
     paper/treemmm_white_paper_v2.md    (assembled markdown)
     paper/treemmm_white_paper_v2.html  (self-contained, sticky TOC, KaTeX-ready)
@@ -51,154 +59,13 @@ def _figure_html(filename: str, caption: str, css_class: str = "fig") -> str:
 
 
 # Section heading -> list of (filename, caption) tuples for the figures
-# that belong with that section. Section headings match the IJF structure
-# in TreeMMM_White_Paper.md (Sections 5.1-5.8).
-PAPER_FIGURES: dict[str, list[tuple[str, str]]] = {
-    "### 5.1 Attribution Recovery": [
-        (
-            "fig1_attribution_recovery.png",
-            "Figure 1. Attribution recovery across four benchmark DGPs. "
-            "Left: share-MAPE between recovered and reference channel "
-            "shares (lower is better). Right: Spearman rank correlation "
-            "between recovered and true channel rankings. All values "
-            "are mean +/- SE across N=5 seeds.",
-        ),
-        (
-            "fig2_attribution_shares.png",
-            "Figure 2. Attribution shares per channel. Reference shares "
-            "(gray) versus TreeMMM-recovered shares (blue) for each "
-            "channel within each dataset, after promo-only "
-            "renormalization.",
-        ),
-    ],
-    "### 5.2 Interaction Discovery": [
-        (
-            "fig3_interaction_detection.png",
-            "Figure 3. Interaction detection across the planted "
-            "interactions. Green cells indicate detection, red cells "
-            "indicate missed detection. TreeMMM discovers five of the "
-            "six planted interactions without prior specification.",
-        ),
-        (
-            "fig11_threshold_pr_curve.png",
-            "Figure 11. Interaction discovery threshold sensitivity. "
-            "Panel A: precision-recall scatter over the 5x5 threshold "
-            "grid (25 combinations of SHAP importance and |Spearman| "
-            "correlation threshold), aggregated across the three "
-            "non-linear DGPs. Points are colored by F1 (green = high). "
-            "The default operating point (3%, 0.10, blue star) and "
-            "post-hoc optimal (3%, 0.15, red diamond) are annotated. "
-            "Panel B: F1 heat-map over the full grid; default cell "
-            "outlined in blue. F1 ranges from 0.40 to 0.59 across the "
-            "viable region, confirming the default is not a knife-edge "
-            "choice.",
-        ),
-    ],
-    "### 5.3 Predictive Accuracy and Calibration": [
-        (
-            "fig7_predictive_performance.png",
-            "Figure 7. Predictive performance on held-out test folds. "
-            "Left: R-squared per dataset and model. Right: weighted "
-            "MAPE on response-scale predictions.",
-        ),
-        (
-            "fig12_calibration_deciles.png",
-            "Figure 12. Predicted vs actual decile calibration across "
-            "four DGPs (rows) and three models (columns): TreeMMM, "
-            "GLMM-Naive, GLMM-Oracle. Each point is one prediction "
-            "decile bin; the dashed diagonal is the y=x perfect-"
-            "calibration reference. TreeMMM sits close to the diagonal "
-            "on all non-linear DGPs (CPG MAD=0.17, SaaS MAD=0.14, "
-            "pharma MAD=503 vs GLMM-Naive MAD=23,977). Both GLMM "
-            "variants show systematic underprediction on CPG and SaaS "
-            "and complete calibration breakdown on pharma count data. "
-            "All three models are identically well-calibrated on the "
-            "linear (Gaussian) DGP.",
-        ),
-    ],
-    "### 5.4 mROI Ground-Truth Benchmarking": [
-        (
-            "fig8_mroi_response_curves.png",
-            "Figure 8. Normalized response curves on the pharma DGP. "
-            "Each panel shows one channel; curves are indexed to 100 "
-            "at baseline allocation for shape comparison. DGP ground "
-            "truth (green), TreeMMM (blue), GLMM-Naive (orange).",
-        ),
-        (
-            "fig9_mroi_accuracy.png",
-            "Figure 9. mROI ground-truth alignment summary. (A) "
-            "Spearman rank correlation between recovered and true "
-            "marginal-return rankings. (B) Direction accuracy: share "
-            "of channels where the model identifies the correct "
-            "increase or decrease direction. (C) Predicted versus "
-            "true lift from the optimizer's recommended reallocation.",
-        ),
-    ],
-    "#### 5.5.2 Bayesian Prior Sensitivity": [
-        (
-            "fig10_prior_sensitivity.png",
-            "Figure 10. Bayesian prior sensitivity. Panel A: max-minus-"
-            "min channel-share swing across prior scales 0.5x / 1x / 2x "
-            "for each (dataset, channel) combination, with a "
-            "10-percentage-point reference line. Panel B: posterior "
-            "90% credible interval per channel at the default prior, "
-            "by dataset.",
-        ),
-    ],
-    "### 5.6 Sample-Size Regime Boundaries": [
-        (
-            "fig13_power_analysis.png",
-            "Figure 13. Power analysis: attribution MAPE vs sample size "
-            "across four DGPs (2x2 grid). x-axis: n_customers (log scale); "
-            "y-axis: attribution share-MAPE (lower is better). One line per "
-            "model (TreeMMM blue, GLMM-Naive orange, GLMM-Oracle green, "
-            "PyMC-Hier-Naive pink). Dotted vertical line marks the crossover "
-            "n at which TreeMMM MAPE first exceeds GLMM-Naive MAPE.",
-        ),
-    ],
-    "### 5.1 Attribution Recovery [distribution]": [
-        (
-            "fig4_distribution_matching.png",
-            "Figure 4. Distribution-aware objective selection. "
-            "Share-MAPE under the correct objective (green) versus a "
-            "mismatched Gaussian objective (red) on the pharma DGP, "
-            "and the mirror comparison on the linear DGP. Correct "
-            "objective selection reduces share-MAPE by roughly 50 to "
-            "56 percent.",
-        ),
-    ],
-    "#### 5.5.1 Distribution Matching": [
-        (
-            "fig4_distribution_matching.png",
-            "Figure 4. Distribution-aware objective selection. "
-            "Share-MAPE under the correct objective (green) versus a "
-            "mismatched Gaussian objective (red) on the pharma DGP, "
-            "and the mirror comparison on the linear DGP. Correct "
-            "objective selection reduces share-MAPE by roughly 50 to "
-            "56 percent.",
-        ),
-    ],
-    "#### 5.5.2 Bayesian Prior Sensitivity [dup]": [],
-    "### 5.4 mROI Ground-Truth Benchmarking [hcs]": [
-        (
-            "fig5_hcs_recovery.png",
-            "Figure 5. Heterogeneous customer sensitivity recovery. "
-            "Spearman rho between true latent per-customer sensitivity "
-            "and recovered mean absolute SHAP, by channel and dataset.",
-        ),
-        (
-            "fig6_speed_comparison.png",
-            "Figure 6. Computation time per dataset for training and "
-            "attribution. All methods complete within 100 seconds on "
-            "a consumer laptop at the 3,000 by 36 benchmark scale.",
-        ),
-    ],
-}
-
-# Simplified figure injection: only inject figures that exactly match
-# a section heading (no duplicates)
+# that belong with that section. Section headings match the post-reorg
+# IJF structure in TreeMMM_White_Paper.md (Results now Sections 4.1-4.8;
+# Methodology moved to Section 7; Discussion is Section 5; Conclusion is
+# Section 6). Only inject figures that exactly match a section heading
+# (no duplicates).
 PAPER_FIGURES_CLEAN: dict[str, list[tuple[str, str]]] = {
-    "### 5.1 Attribution Recovery": [
+    "### 4.1 Attribution Recovery": [
         (
             "fig1_attribution_recovery.png",
             "Figure 1. Attribution recovery across four benchmark DGPs. "
@@ -215,7 +82,7 @@ PAPER_FIGURES_CLEAN: dict[str, list[tuple[str, str]]] = {
             "renormalization.",
         ),
     ],
-    "### 5.2 Interaction Discovery": [
+    "### 4.2 Interaction Discovery": [
         (
             "fig3_interaction_detection.png",
             "Figure 3. Interaction detection across the planted "
@@ -232,7 +99,7 @@ PAPER_FIGURES_CLEAN: dict[str, list[tuple[str, str]]] = {
             "0.40 to 0.59 across the viable region.",
         ),
     ],
-    "### 5.3 Predictive Accuracy and Calibration": [
+    "### 4.3 Predictive Accuracy and Calibration": [
         (
             "fig7_predictive_performance.png",
             "Figure 7. Predictive performance on held-out test folds. "
@@ -247,7 +114,7 @@ PAPER_FIGURES_CLEAN: dict[str, list[tuple[str, str]]] = {
             "SaaS MAD=0.14, pharma MAD=503 vs GLMM-Naive MAD=23,977).",
         ),
     ],
-    "### 5.4 mROI Ground-Truth Benchmarking": [
+    "### 4.4 mROI Ground-Truth Benchmarking": [
         (
             "fig8_mroi_response_curves.png",
             "Figure 8. Normalized response curves on the pharma DGP. "
@@ -272,7 +139,7 @@ PAPER_FIGURES_CLEAN: dict[str, list[tuple[str, str]]] = {
             "a consumer laptop at the 3,000 by 36 benchmark scale.",
         ),
     ],
-    "#### 5.5.1 Distribution Matching": [
+    "#### 4.5.1 Distribution Matching": [
         (
             "fig4_distribution_matching.png",
             "Figure 4. Distribution-aware objective selection. "
@@ -282,7 +149,7 @@ PAPER_FIGURES_CLEAN: dict[str, list[tuple[str, str]]] = {
             "objective selection reduces share-MAPE by 50 to 56 percent.",
         ),
     ],
-    "#### 5.5.2 Bayesian Prior Sensitivity": [
+    "#### 4.5.2 Bayesian Prior Sensitivity": [
         (
             "fig10_prior_sensitivity.png",
             "Figure 10. Bayesian prior sensitivity. Panel A: max-minus-"
@@ -291,7 +158,7 @@ PAPER_FIGURES_CLEAN: dict[str, list[tuple[str, str]]] = {
             "default prior, by dataset.",
         ),
     ],
-    "### 5.6 Sample-Size Regime Boundaries": [
+    "### 4.6 Sample-Size Regime Boundaries": [
         (
             "fig13_power_analysis.png",
             "Figure 13. Power analysis: attribution MAPE vs sample size "
@@ -319,51 +186,18 @@ def _inject_figures(md: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Cross-reference fixes: canonical v1 section numbers -> v2 IJF numbers
+# Cross-reference fixes
 # ---------------------------------------------------------------------------
-XREF_FIXES: list[tuple[str, str]] = [
-    # Old Results subsections (4.x) -> new Section 5.x numbering
-    ("Section 4.12", "Section 5.6"),
-    ("Section 4.11", "Section 5.8"),
-    ("Section 4.10", "Section 5.7.2"),
-    ("Section 4.9", "Section 5.7.1"),
-    ("Section 4.8", "Section 5.5.2"),
-    ("Section 4.7", "Section 5.4"),
-    ("Section 4.6", "Section 5.3"),
-    ("Section 4.5", "Section 5.4"),   # comp time folded into mROI
-    ("Section 4.4", "Section 5.4"),   # HCS folded into mROI
-    ("Section 4.3", "Section 5.5.1"),
-    ("Section 4.2", "Section 5.2"),
-    ("Section 4.1", "Section 5.1"),
-    # Old Limitations (5.5.x) -> new Section 6.4
-    ("Section 5.5.1", "Section 6.4"),
-    ("Section 5.5.2", "Section 6.4"),
-    ("Section 5.5.3", "Section 6.4"),
-    ("Section 5.5.4", "Section 6.4"),
-    ("Section 5.5.5", "Section 6.4"),
-    ("Section 5.5", "Section 6.4"),
-    # Old Package Architecture (6) -> Appendix B
-    ("Section 6", "Appendix B"),
-    # Old Experimental Design (3.3) -> now Section 4.3
-    ("Section 3.3 for", "Section 4.3 for"),
-    ("Section 3.3", "Section 4.3"),
-    # Suppress Appendix A references that are now internal
-    (
-        "An exploratory comparison with **DeepCausalMMM** "
-        "(Tirumala, 2025), a neural MMM combining GRU temporal "
-        "encoding, learned DAG structure, and Hill saturation "
-        "curves, is reported in Appendix A. That comparison is "
-        "presented separately because the data format mismatch "
-        "(panel data reshaped to 3D tensors) and reduced "
-        "hyperparameter configuration make it less directly "
-        "comparable to the regression baselines.",
-        "An exploratory comparison with DeepCausalMMM is reported in Appendix A.",
-    ),
-]
+# The canonical TreeMMM_White_Paper.md is now authored directly with the
+# correct post-reorg numbering (Introduction §1 merged with positioning_
+# and_scope content; Data & Experimental Design §3; Results §4;
+# Discussion §5; Conclusion §6; Methodology moved to §7). No cross-
+# reference rewrites are required at build time.
+XREF_FIXES: list[tuple[str, str]] = []
 
 
 def _apply_xref_fixes(md: str) -> str:
-    """Apply ordered cross-reference substitutions."""
+    """Apply ordered cross-reference substitutions (no-op after reorg)."""
     for needle, replacement in XREF_FIXES:
         md = md.replace(needle, replacement)
     return md
