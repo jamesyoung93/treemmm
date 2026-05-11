@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from treemmm.ui.cli_runner import build_parser, cmd_demo, main
+from treemmm.ui.cli_runner import build_parser, main
 
 
 class TestCLIParser:

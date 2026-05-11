@@ -5,4 +5,55 @@ __pycache__/
 dist/
 build/
 .env
+.claude/
 tmp_*.py
+*_proposer_prompt.md
+PROPOSAL.md
+REVIEW.md
+paper/REVIEW_*.md
+paper/WHITE_PAPER_REVIEW.md
+paper/TreeMMM_White_Paper.pdf
+paper/TreeMMM_White_Paper.html
+# pytensor compile cache (created by PyMCBayesianMMM on Windows)
+Temppytensor_cache/
+pytensor_cache/
+treemmm_proposer_prompt.md
+
+# LaTeX intermediates (both root and arxiv_submission copies)
+paper/*.log
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.out
+paper/*.toc
+paper/*.spl
+paper/*.fls
+paper/*.fdb_latexmk
+paper/arxiv_submission/*.log
+paper/arxiv_submission/*.aux
+paper/arxiv_submission/*.bbl
+paper/arxiv_submission/*.blg
+paper/arxiv_submission/*.out
+paper/arxiv_submission/*.toc
+paper/arxiv_submission/*.spl
+paper/arxiv_submission/*.fls
+paper/arxiv_submission/*.fdb_latexmk
+
+# Private/local drafts (social posts, scratch notes)
+_local/
+paper/_local/
+
+# Internal lab artifacts (not for public release)
+LOGBOOK.md
+paper/review_round/
+
+# Build outputs (derivable from canonical .md source)
+paper/treemmm_white_paper_v2.md
+paper/treemmm_white_paper_v2.html
+paper/treemmm_white_paper_v2.pdf
+
+# Stray path-concat artifact (one-time cleanup)
+UsersAdminAppDataLocalTemppytensor_cache/
+
+# Runtime output dirs (quickstart, demo)
+output/

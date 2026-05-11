@@ -30,6 +30,22 @@ class LightGBMModel(BaseModel):
         categorical_features: list[str] | None = None,
         monotone_constraints: list[int] | None = None,
     ) -> None:
+        """Initialize the LightGBM wrapper.
+
+        Args:
+            objective: Outcome distribution / GBT objective.
+            tweedie_variance_power: Tweedie variance power (only used when
+                ``objective`` is ``Objective.TWEEDIE``).
+            categorical_features: Names of categorical feature columns.
+            monotone_constraints: Per-feature monotone direction (``+1`` for
+                non-decreasing, ``-1`` for non-increasing, ``0`` for no
+                constraint).  Length must match the feature columns at fit
+                time.  This enforces a *global* monotone response on the
+                full prediction; per-observation SHAP values may still
+                show mixed signs when interaction effects locally bend
+                the response — that is mathematically expected, not a
+                violation of the constraint.
+        """
         self._objective = objective
         self._tweedie_variance_power = tweedie_variance_power
         self._categorical_features = categorical_features or []

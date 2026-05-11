@@ -31,7 +31,6 @@ def cmd_run(args: argparse.Namespace) -> int:
     import pandas as pd
 
     from treemmm.core.config import (
-        BacktestStrategy,
         ColumnSpec,
         Objective,
         RunConfig,
@@ -47,10 +46,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         logger.error(f"Data file not found: {data_path}")
         return 1
 
-    if data_path.suffix == ".parquet":
-        df = pd.read_parquet(data_path)
-    else:
-        df = pd.read_csv(data_path)
+    df = pd.read_parquet(data_path) if data_path.suffix == ".parquet" else pd.read_csv(data_path)
 
     logger.info(f"Loaded {len(df)} rows from {data_path}")
 
@@ -72,10 +68,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     )
 
     # Resolve objective
-    if args.objective == "auto":
-        objective = "auto"
-    else:
-        objective = Objective(args.objective)
+    objective = "auto" if args.objective == "auto" else Objective(args.objective)
 
     config = RunConfig(
         columns=columns,

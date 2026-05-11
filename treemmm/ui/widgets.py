@@ -99,10 +99,7 @@ def _widget_config(df: pd.DataFrame) -> RunConfig:
     # Note: In a real interactive session, this would be triggered by a button.
     # For now, we read the current widget values.
     obj = objective.value
-    if obj == "auto":
-        config_obj = "auto"
-    else:
-        config_obj = Objective(obj)
+    config_obj = "auto" if obj == "auto" else Objective(obj)
 
     config = RunConfig(
         columns=ColumnSpec(
@@ -135,10 +132,7 @@ def _text_config(df: pd.DataFrame) -> RunConfig:
     control_vars = [v.strip() for v in control_input.split(",") if v.strip()]
 
     obj_input = input("Objective [auto/gaussian/poisson/tweedie/gamma] (default: auto): ").strip()
-    if obj_input and obj_input != "auto":
-        config_obj = Objective(obj_input)
-    else:
-        config_obj = "auto"
+    config_obj = Objective(obj_input) if obj_input and obj_input != "auto" else "auto"
 
     config = RunConfig(
         columns=ColumnSpec(

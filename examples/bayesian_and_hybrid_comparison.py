@@ -22,8 +22,8 @@ import time
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-from treemmm.demo.benchmark import run_benchmark
 from treemmm.core.models.bayesian_baseline import is_pymc_available
+from treemmm.demo.benchmark import run_benchmark
 
 
 def main() -> None:

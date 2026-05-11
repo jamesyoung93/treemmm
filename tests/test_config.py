@@ -1,8 +1,6 @@
 """Tests for RunConfig and ColumnSpec validation."""
 
 from treemmm.core.config import (
-    BacktestStrategy,
-    CarryoverMethod,
     ColumnSpec,
     Objective,
     RunConfig,

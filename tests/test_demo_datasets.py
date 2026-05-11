@@ -1,7 +1,5 @@
 """Tests for all demo datasets: CPG, SaaS, Linear baseline."""
 
-import numpy as np
-import pytest
 
 from treemmm.demo.datasets.cpg_brand import (
     cpg_dgp_config,

@@ -107,10 +107,7 @@ def shap_sign_audit(
         mean_signed = float(np.mean(col))
         mean_unsigned = float(np.mean(np.abs(col)))
 
-        if mean_unsigned < zero_threshold:
-            consistency = 1.0
-        else:
-            consistency = abs(mean_signed) / mean_unsigned
+        consistency = 1.0 if mean_unsigned < zero_threshold else abs(mean_signed) / mean_unsigned
 
         frac_neg = n_neg / n
         frac_pos = n_pos / n

@@ -127,6 +127,12 @@ class RunConfig:
             Only used when objective is TWEEDIE.
         max_lag: Maximum lag periods for LAG carryover or Granger test.
         random_state: Reproducibility seed.
+        adstock_decay: Geometric adstock decay rate(s) to apply to promo
+            features BEFORE model fitting.  ``None`` means no adstock
+            preprocessing.  A single ``float`` applies the same rate to
+            all promo channels.  A ``dict[str, float]`` maps each channel
+            to its own rate; channels not present in the dict are left
+            untransformed (decay=0).  Valid values are in ``[0, 1)``.
     """
 
     columns: ColumnSpec
@@ -139,6 +145,7 @@ class RunConfig:
     tweedie_variance_power: float = 1.5
     max_lag: int = 3
     random_state: int = 42
+    adstock_decay: float | dict[str, float] | None = None
 
     def get_alignment(self, var: str) -> TemporalAlignment:
         """Return temporal alignment for a variable, defaulting to contemporaneous."""

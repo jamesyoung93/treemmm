@@ -18,14 +18,12 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from treemmm.core.attribution.decomposer import decompose, verify_attribution_sums
 from treemmm.core.config import ColumnSpec, Objective, RunConfig
-from treemmm.core.interpret.shap_engine import SHAPResult, compute_shap, compute_shap_multifold
+from treemmm.core.interpret.shap_engine import compute_shap_multifold
 from treemmm.core.models.base import FoldResult, ModelResult
-from treemmm.core.models.glmm_baseline import build_naive_glmm, build_oracle_glmm
 from treemmm.core.models.lightgbm_model import LightGBMModel
 from treemmm.core.temporal.splitter import get_splits
-from treemmm.demo.datasets.pharma_brand import generate_pharma_dataset, pharma_dgp_config
+from treemmm.demo.datasets.pharma_brand import generate_pharma_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +150,7 @@ def _to_promo_only_shares(
 
 
 def _attach_promo_only_metrics(
-    recovery: "AttributionRecovery",
+    recovery: AttributionRecovery,
     promo_vars: list[str],
 ) -> None:
     """Compute the promo-only share variant on an AttributionRecovery in place."""
@@ -287,7 +285,7 @@ def _train_and_attribute_lgbm(
 
     # Per-fold predictions (each from the model that didn't see them)
     all_preds = []
-    for model, X in zip(trained_models, test_X_sets):
+    for model, X in zip(trained_models, test_X_sets, strict=False):
         all_preds.append(model.predict(X))
     preds = np.concatenate(all_preds)
 
@@ -318,7 +316,6 @@ def _train_and_attribute_glmm(
     Returns:
         (attribution_shares, r2, wmape)
     """
-    from treemmm.core.interpret.shap_engine import SHAPResult
 
     feature_cols = config.columns.all_feature_cols()
     folds = get_splits(
@@ -329,17 +326,21 @@ def _train_and_attribute_glmm(
 
     if interaction_terms:
         from treemmm.core.models.glmm_baseline import build_oracle_glmm
-        model_builder = lambda: build_oracle_glmm(
-            interaction_terms=interaction_terms,
-            group_col=config.columns.customer_id,
-            categorical_vars=config.columns.categorical_vars,
-        )
+
+        def model_builder():
+            return build_oracle_glmm(
+                interaction_terms=interaction_terms,
+                group_col=config.columns.customer_id,
+                categorical_vars=config.columns.categorical_vars,
+            )
     else:
         from treemmm.core.models.glmm_baseline import build_naive_glmm
-        model_builder = lambda: build_naive_glmm(
-            group_col=config.columns.customer_id,
-            categorical_vars=config.columns.categorical_vars,
-        )
+
+        def model_builder():
+            return build_naive_glmm(
+                group_col=config.columns.customer_id,
+                categorical_vars=config.columns.categorical_vars,
+            )
 
     fold_results = []
     trained_models = []
@@ -375,7 +376,6 @@ def _train_and_attribute_glmm(
     last_model = trained_models[-1]
     all_test_X = pd.concat(test_X_sets, axis=0).reset_index(drop=True)
     shap_vals = last_model.get_shap_values(all_test_X)
-    preds = last_model.predict(all_test_X)
 
     # Compute per-variable shares from coefficient attributions
     abs_attr = np.sum(np.abs(shap_vals), axis=0)

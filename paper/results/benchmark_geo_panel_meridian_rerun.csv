@@ -1,0 +1,2 @@
+dataset,n_regions,n_weeks,model,attribution_mape,rank_correlation,r2,wmape,elapsed_seconds,notes,recovered_tv_grps,true_tv_grps,recovered_digital_spend,true_digital_spend,recovered_trade_promo,true_trade_promo
+geo_panel,200,52,Meridian,56.95666679965902,1.0,0.0,1.0,1733.6977875232697,,0.7050075369215458,0.4497543091711212,0.2712351671023665,0.375017465168312,0.023757295976087705,0.17522822566056678

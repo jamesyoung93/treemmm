@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 try:
-    import catboost
+    import catboost  # noqa: F401  (availability check only)
     HAS_CATBOOST = True
 except ImportError:
     HAS_CATBOOST = False

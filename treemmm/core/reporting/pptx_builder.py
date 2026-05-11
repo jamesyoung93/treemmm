@@ -23,11 +23,11 @@ import logging
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 
 from treemmm.core.attribution.decomposer import Attribution
 from treemmm.core.models.base import ModelResult
@@ -84,7 +84,16 @@ def _make_temporal_attribution(
     pivot = pivot[col_order]
 
     fig, ax = plt.subplots(figsize=(10, 5))
-    pivot.plot.area(ax=ax, color=TREEMMM_COLORS[:len(pivot.columns)], alpha=0.8)
+    # pandas .plot.area defaults to stacked=True, which requires every
+    # column to be uniformly signed.  Tree-based SHAP can produce mixed
+    # signs per period, so we fall back to non-stacked lines in that case.
+    mixed_sign = bool(((pivot > 0).any() & (pivot < 0).any()).any())
+    if mixed_sign:
+        pivot.plot.line(ax=ax, color=TREEMMM_COLORS[:len(pivot.columns)])
+    else:
+        pivot.plot.area(
+            ax=ax, color=TREEMMM_COLORS[:len(pivot.columns)], alpha=0.8,
+        )
     ax.set_xlabel("Period")
     ax.set_ylabel("Attribution")
     ax.set_title("Attribution Over Time")
@@ -126,7 +135,7 @@ def _make_performance_chart(model_result: ModelResult) -> bytes:
     ax.set_ylabel("R²")
     ax.set_title("Model Performance Across CV Folds")
     ax.legend()
-    for bar, val in zip(bars, r2_vals):
+    for bar, val in zip(bars, r2_vals, strict=False):
         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.01,
                 f"{val:.3f}", ha="center", fontsize=9)
     fig.tight_layout()
@@ -191,8 +200,7 @@ def build_pptx(
     """
     try:
         from pptx import Presentation
-        from pptx.util import Inches, Pt
-        from pptx.enum.text import PP_ALIGN
+        from pptx.util import Inches
     except ImportError as e:
         raise ImportError(
             "python-pptx is not installed. "
@@ -228,9 +236,15 @@ def build_pptx(
     for _, row in ga_top.iterrows():
         tf.add_paragraph().text = f"  {row['variable']}: {row['pct_of_total']:.1f}%"
 
+    # Layout 5 (Title Only) carries a title placeholder; layout 6 (Blank)
+    # does not, so the older code raised AttributeError when assigning
+    # `slide.shapes.title.text`.  Use the title-only layout for the chart
+    # slides instead.
+    title_only_layout = prs.slide_layouts[5]
+
     # --- Slide 3: Model Performance ---
     perf_png = _make_performance_chart(model_result)
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank
+    slide = prs.slides.add_slide(title_only_layout)
     slide.shapes.title.text = "Model Performance"
     slide.shapes.add_picture(
         io.BytesIO(perf_png), Inches(1), Inches(1.5), Inches(10), Inches(5),
@@ -238,7 +252,7 @@ def build_pptx(
 
     # --- Slide 4: Global Attribution ---
     attr_png = _make_attribution_bar(attribution)
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = prs.slides.add_slide(title_only_layout)
     slide.shapes.title.text = "Global Attribution"
     slide.shapes.add_picture(
         io.BytesIO(attr_png), Inches(1), Inches(1.5), Inches(10), Inches(5),
@@ -246,7 +260,7 @@ def build_pptx(
 
     # --- Slide 5: Feature Importance ---
     fi_png = _make_feature_importance(attribution)
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    slide = prs.slides.add_slide(title_only_layout)
     slide.shapes.title.text = "Feature Importance (Mean |SHAP|)"
     slide.shapes.add_picture(
         io.BytesIO(fi_png), Inches(1), Inches(1.5), Inches(10), Inches(5),
@@ -255,7 +269,7 @@ def build_pptx(
     # --- Slide 6: Temporal Attribution (if time values provided) ---
     if time_values is not None:
         ta_png = _make_temporal_attribution(attribution, time_values)
-        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        slide = prs.slides.add_slide(title_only_layout)
         slide.shapes.title.text = "Attribution Over Time"
         slide.shapes.add_picture(
             io.BytesIO(ta_png), Inches(1), Inches(1.5), Inches(10), Inches(5),
@@ -264,7 +278,7 @@ def build_pptx(
     # --- Slide 7-8: mROI (if available) ---
     if mroi_result is not None:
         rc_png = _make_response_curves(mroi_result)
-        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        slide = prs.slides.add_slide(title_only_layout)
         slide.shapes.title.text = "mROI Response Curves"
         slide.shapes.add_picture(
             io.BytesIO(rc_png), Inches(0.5), Inches(1.5), Inches(12), Inches(5),

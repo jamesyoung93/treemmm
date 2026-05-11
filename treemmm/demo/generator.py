@@ -12,13 +12,12 @@ ground-truth metadata.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable
 
 import numpy as np
 import pandas as pd
-from scipy import stats as sp_stats
 
 
 # ---------------------------------------------------------------------------
@@ -208,6 +207,10 @@ class GroundTruth:
     targeting_bias_vars: list[str]
     # DGP config for reproducibility
     config: DGPConfig
+    # Per-customer base rates for deterministic re-evaluation (mROI benchmarking)
+    base_rates: dict[str, float] = field(default_factory=dict)
+    # Seasonality array (one value per period) for deterministic re-evaluation
+    seasonality: np.ndarray = field(default_factory=lambda: np.array([]))
 
 
 @dataclass
@@ -310,7 +313,7 @@ def generate(config: DGPConfig) -> GeneratedDataset:
 
         # Generate promo variable time series for this customer
         promo_series: dict[str, np.ndarray] = {}
-        for j, pv in enumerate(config.promo_vars):
+        for _j, pv in enumerate(config.promo_vars):
             if pv.gen_style == "uniform_int":
                 vals = rng.integers(pv.gen_min, pv.gen_max + 1, size=n_t).astype(float)
             elif pv.gen_style == "poisson":
@@ -427,18 +430,12 @@ def generate(config: DGPConfig) -> GeneratedDataset:
                 mu = max(0.01, np.exp(eta * 0.18))
                 zi = config.zero_inflation if config.zero_inflation is not None else 0.2
                 k = config.gamma_shape
-                if rng.random() < zi:
-                    y = 0.0
-                else:
-                    y = float(rng.gamma(k, mu / k))
+                y = 0.0 if rng.random() < zi else float(rng.gamma(k, mu / k))
             elif config.distribution == "zi_gamma":
                 mu = max(0.01, np.exp(eta * 0.22))
                 zi = config.zero_inflation if config.zero_inflation is not None else 0.3
                 k = config.gamma_shape
-                if rng.random() < zi:
-                    y = 0.0
-                else:
-                    y = float(rng.gamma(k, mu / k))
+                y = 0.0 if rng.random() < zi else float(rng.gamma(k, mu / k))
             else:
                 y = float(max(0, eta))
 
@@ -475,12 +472,17 @@ def generate(config: DGPConfig) -> GeneratedDataset:
     for key, val in component_sums.items():
         attribution_shares[key] = val / total_abs if total_abs > 0 else 0.0
 
+    base_rates_dict = {
+        f"cust_{i:04d}": float(base_rates[i]) for i in range(n_c)
+    }
     ground_truth = GroundTruth(
         attribution_shares=attribution_shares,
         customer_sensitivities=customer_sens_dict,
         interactions=config.interactions,
         targeting_bias_vars=[tb.promo_var for tb in config.targeting_bias],
         config=config,
+        base_rates=base_rates_dict,
+        seasonality=seasonality,
     )
 
     # Column mapping

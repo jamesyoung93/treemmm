@@ -10,36 +10,6 @@ from treemmm.core.attribution.decomposer import Attribution
 from treemmm.core.models.base import ModelResult
 
 
-def export_predictions(
-    result: ModelResult,
-    customer_ids: pd.Series,
-    time_values: pd.Series,
-    output_dir: Path,
-) -> Path:
-    """Export predictions CSV: customer_id, time, actual, predicted."""
-    rows = []
-    for fr in result.fold_results:
-        for y_t, y_p in zip(fr.y_true, fr.y_pred):
-            rows.append({"actual": y_t, "predicted": y_p})
-
-    # Reconstruct index from test masks
-    all_true = []
-    all_pred = []
-    all_cust = []
-    all_time = []
-    for fr in result.fold_results:
-        all_true.extend(fr.y_true)
-        all_pred.extend(fr.y_pred)
-
-    df = pd.DataFrame({
-        "actual": all_true,
-        "predicted": all_pred,
-    })
-    path = output_dir / "predictions.csv"
-    df.to_csv(path, index=False)
-    return path
-
-
 def export_global_attribution(
     attribution: Attribution,
     output_dir: Path,

@@ -2,7 +2,6 @@
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from treemmm.core.config import ColumnSpec, Objective, RunConfig
 from treemmm.core.models.lightgbm_model import LightGBMModel

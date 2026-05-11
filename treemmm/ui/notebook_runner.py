@@ -16,13 +16,11 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 
-from treemmm.core.config import Objective, RunConfig
+from treemmm.core.config import RunConfig
 from treemmm.pipeline import PipelineResult, run
 
 logger = logging.getLogger(__name__)

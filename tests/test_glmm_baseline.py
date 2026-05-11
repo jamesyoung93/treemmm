@@ -2,11 +2,8 @@
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from treemmm.core.models.glmm_baseline import (
-    GLMMConfig,
-    GLMMModel,
     build_naive_glmm,
     build_oracle_glmm,
 )

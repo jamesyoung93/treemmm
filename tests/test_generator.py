@@ -2,23 +2,20 @@
 
 import numpy as np
 import pandas as pd
-import pytest
 
+from treemmm.demo.datasets.pharma_brand import (
+    generate_pharma_dataset,
+    pharma_dgp_config,
+    pharma_run_config,
+)
 from treemmm.demo.generator import (
-    ControlVarSpec,
     DGPConfig,
-    GeneratedDataset,
     HCSSpec,
     InteractionSpec,
     PromoVarSpec,
     ResponseType,
     TargetingBiasSpec,
     generate,
-)
-from treemmm.demo.datasets.pharma_brand import (
-    generate_pharma_dataset,
-    pharma_dgp_config,
-    pharma_run_config,
 )
 
 
@@ -76,7 +73,7 @@ class TestGenerator:
         cfg = self._minimal_config()
         ds = generate(cfg)
         assert len(ds.ground_truth.customer_sensitivities) == cfg.n_customers
-        for cid, sens in ds.ground_truth.customer_sensitivities.items():
+        for _cid, sens in ds.ground_truth.customer_sensitivities.items():
             assert "x1" in sens
             assert "x2" in sens
 

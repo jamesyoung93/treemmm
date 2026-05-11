@@ -28,10 +28,7 @@ def package_zip(
         Path to the created ZIP file.
     """
     output_dir = Path(output_dir)
-    if zip_path is None:
-        zip_path = output_dir / "treemmm_results.zip"
-    else:
-        zip_path = Path(zip_path)
+    zip_path = output_dir / "treemmm_results.zip" if zip_path is None else Path(zip_path)
 
     if include_patterns is None:
         include_patterns = [".csv", ".pptx", ".png", ".xlsx"]

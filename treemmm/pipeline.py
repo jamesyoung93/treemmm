@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 from treemmm.core.attribution.decomposer import Attribution, decompose, verify_attribution_sums
-from treemmm.core.config import BacktestStrategy, Objective, RunConfig
+from treemmm.core.config import Objective, RunConfig
 from treemmm.core.data_handler import PreparedData, prepare_data
 from treemmm.core.interpret.shap_engine import SHAPResult, compute_shap
 from treemmm.core.models.base import BaseModel, FoldResult, ModelResult
@@ -28,7 +28,11 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PipelineResult:
-    """Complete output from a TreeMMM pipeline run."""
+    """Complete output from a TreeMMM pipeline run.
+
+    Note: attribution is computed from the *last* CV fold's model.  Performance
+    metrics in ``model_result`` are pooled across all folds.
+    """
 
     prepared_data: PreparedData
     model_result: ModelResult
@@ -37,25 +41,70 @@ class PipelineResult:
     trained_models: list[BaseModel] = field(default_factory=list)
     output_dir: Path | None = None
 
+    @property
+    def attribution_shares(self) -> dict[str, float]:
+        """Convenience accessor: per-variable share of total outcome (sums to 1.0).
+
+        Includes the base/intercept share under the key ``"_base"``.  Values are
+        derived from ``attribution.global_attribution()['pct_of_total']`` and
+        divided by 100 so they live on a fractional scale.
+        """
+        ga = self.attribution.global_attribution()
+        return {row["variable"]: float(row["pct_of_total"]) / 100.0
+                for _, row in ga.iterrows()}
+
+    @property
+    def fold_metrics(self) -> list[dict]:
+        """Convenience accessor: per-fold performance metrics.
+
+        Returns a list of dicts, one per CV fold, each containing
+        ``fold``, ``r2``, ``wmape``, ``mae``, and the number of test observations.
+        """
+        rows: list[dict] = []
+        for fr in self.model_result.fold_results:
+            y_true = np.asarray(fr.y_true, dtype=float)
+            y_pred = np.asarray(fr.y_pred, dtype=float)
+            ss_res = float(np.sum((y_true - y_pred) ** 2))
+            ss_tot = float(np.sum((y_true - np.mean(y_true)) ** 2))
+            r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+            total_actual = float(np.sum(np.abs(y_true)))
+            wmape = (
+                float(np.sum(np.abs(y_true - y_pred)) / total_actual)
+                if total_actual > 0
+                else 0.0
+            )
+            mae = float(np.mean(np.abs(y_true - y_pred)))
+            rows.append({
+                "fold": fr.fold_idx,
+                "r2": r2,
+                "wmape": wmape,
+                "mae": mae,
+                "n_test": int(len(y_true)),
+            })
+        return rows
+
     def summary(self) -> str:
         """Human-readable summary of pipeline results."""
         mr = self.model_result
         dd = self.prepared_data.distribution_diagnostic
         ga = self.attribution.global_attribution()
 
+        obj = self.prepared_data.config.objective
+        obj_str = obj.value if isinstance(obj, Objective) else obj
+
         lines = [
-            f"=== TreeMMM Pipeline Results ===",
+            "=== TreeMMM Pipeline Results ===",
             f"Model: {mr.model_name}",
-            f"Objective: {self.prepared_data.config.objective.value if isinstance(self.prepared_data.config.objective, Objective) else self.prepared_data.config.objective}",
+            f"Objective: {obj_str}",
             f"Outcome distribution: {dd.reasoning}",
-            f"",
-            f"--- Performance (pooled test folds) ---",
+            "",
+            "--- Performance (pooled test folds) ---",
             f"R²:    {mr.r2:.4f}",
             f"WMAPE: {mr.wmape:.4f}",
             f"MAE:   {mr.mae:.4f}",
             f"Folds: {len(mr.fold_results)}",
-            f"",
-            f"--- Global Attribution ---",
+            "",
+            "--- Global Attribution ---",
         ]
         for _, row in ga.iterrows():
             lines.append(
@@ -76,13 +125,31 @@ class PipelineResult:
         return "\n".join(lines)
 
 
-def _build_model(config: RunConfig) -> BaseModel:
-    """Instantiate the primary model based on config."""
+def _build_model(
+    config: RunConfig,
+    feature_cols: list[str] | None = None,
+) -> BaseModel:
+    """Instantiate the primary model based on config.
+
+    When ``feature_cols`` is supplied we build a monotone-constraint vector
+    that enforces ``+1`` (non-decreasing response) on every promo channel,
+    ``0`` on every other column.  This matches the benchmark configuration
+    used to produce the paper headline results.  Note that monotone
+    constraints bind the *global* response: per-observation SHAP values may
+    still display mixed local signs when interaction effects locally bend
+    the marginal response.  That is mathematically expected and does not
+    violate the constraint.
+    """
     objective = config.objective if isinstance(config.objective, Objective) else Objective.GAUSSIAN
+    mono_constraints: list[int] | None = None
+    if feature_cols is not None:
+        promo_set = set(config.columns.promo_vars)
+        mono_constraints = [1 if col in promo_set else 0 for col in feature_cols]
     return LightGBMModel(
         objective=objective,
         tweedie_variance_power=config.tweedie_variance_power,
         categorical_features=config.columns.categorical_vars,
+        monotone_constraints=mono_constraints,
     )
 
 
@@ -122,8 +189,18 @@ def run(
     # Resolve feature columns (including any lag columns added by data_handler)
     feature_cols = config.columns.all_feature_cols()
     # Check for lag columns that may have been added
-    lag_cols = [c for c in df.columns if any(c.startswith(f"{v}_lag") for v in config.columns.promo_vars)]
+    lag_cols = [
+        c for c in df.columns
+        if any(c.startswith(f"{v}_lag") for v in config.columns.promo_vars)
+    ]
     feature_cols = feature_cols + lag_cols
+
+    # LightGBM requires category-dtype columns for any feature it should
+    # treat as categorical.  Convert before splitting so train/test slices
+    # inherit the dtype.  Matches the conversion in paper/run_benchmarks.py.
+    for col in config.columns.categorical_vars:
+        if col in df.columns and not isinstance(df[col].dtype, pd.CategoricalDtype):
+            df[col] = df[col].astype("category")
 
     # Step 3-4: Model training with temporal CV
     logger.info("Step 3-4: Training model with temporal CV...")
@@ -135,7 +212,7 @@ def run(
     )
     logger.info(f"CV strategy: {strategy}, {len(folds)} folds")
 
-    model = _build_model(config)
+    model = _build_model(config, feature_cols)
     fold_results: list[FoldResult] = []
     trained_models: list[BaseModel] = []
     test_X_sets: list[pd.DataFrame] = []
@@ -155,7 +232,7 @@ def run(
         y_val = y_train[-val_size:]
 
         # Fresh model per fold
-        fold_model = _build_model(config)
+        fold_model = _build_model(config, feature_cols)
         best_params = fold_model.fit(
             X_tr, y_tr, X_val, y_val,
             n_trials=config.n_optuna_trials,
