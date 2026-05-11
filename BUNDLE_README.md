@@ -12,8 +12,16 @@ On the three non-linear panel DGPs (Pharma NegBin, CPG Tweedie, SaaS ZI-Gamma) a
 - `paper/treemmm_ijf.pdf` — compiled preprint
 - `paper/refs.bib` — bibliography
 - `paper/figures/` — 14 figures (PNG + PDF, fig0 through fig13)
-- `paper/results/` — benchmark output CSVs (multi-seed, geo-panel, power analysis, prior sensitivity, threshold sensitivity, calibration deciles, mROI benchmark, distributional GLM comparison)
-- `paper/run_*.py` — analysis pipelines (multi-seed, geo-panel, power analysis, adstock, GLMMDist, Meridian-only, full benchmark)
+- `paper/results/` — benchmark output CSVs:
+  - **Per-seed raw**: `benchmark_multiseed_raw.csv` (120 rows; 4 DGPs × 6 models × 5 seeds)
+  - **Per-customer SHAP**: `pharma_seed42_per_customer_shap.csv` (pharma headline DGP, per-test-customer attribution from the trained LightGBM model)
+  - **Per-allocation-point response curves**: `mroi_curve_points.csv` (model vs DGP outcome at each % of current allocation)
+  - **Per-prior-scale Bayesian diagnostics**: `prior_sensitivity.csv` (divergences, ESS, R-hat, holdout R² across the 4× sigma sweep)
+  - **Per-decile calibration**: `calibration_deciles.csv` (predicted vs actual by decile, per model per DGP)
+  - **Sample-size sweep**: `power_analysis.csv` (TreeMMM vs baselines at n ∈ {200, 500, 1500, 3000})
+  - **Threshold grid**: `interaction_threshold_sweep.csv` (full 5×5 SHAP-importance × ρ grid with precision/recall/F1)
+  - **Aggregated summaries**: `benchmark_summary*.csv` (what's in the paper's headline tables)
+- `paper/run_*.py`, `paper/dump_*.py` — analysis pipelines (multi-seed, geo-panel, power analysis, adstock, GLMMDist, Meridian-only, full benchmark, per-customer SHAP dump)
 - `paper/generate_*.py`, `paper/calibration_plot.py`, `paper/threshold_sensitivity.py`, `paper/mroi_pymc_hier.py` — figure generators and supporting analyses
 
 ## Contact

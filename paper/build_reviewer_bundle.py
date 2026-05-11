@@ -29,6 +29,7 @@ INCLUDE_DIRS = [
 
 PAPER_SCRIPT_GLOBS = [
     "paper/run_*.py",
+    "paper/dump_*.py",
     "paper/generate_figures.py",
     "paper/generate_fig13_power_analysis.py",
     "paper/generate_visual_abstract.py",
