@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    { name = "James Young", email = "james@foretodata.com" },
+    { name = "James Young", email = "james.young@ucb.com" },
 ]
 keywords = ["marketing-mix-modeling", "mmm", "shap", "xgboost", "lightgbm", "attribution"]
 classifiers = [

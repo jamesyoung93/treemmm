@@ -52,8 +52,8 @@
 \title{\textbf{\TreeMMM}: Tree-Based Marketing Mix Modeling\\
   with SHAP Attribution and Automatic Interaction Discovery}
 
-\author{James Young, PhD\\
-  \small{james.young@jacks.sdstate.edu}\\[4pt]
+\author{James Young\\
+  \small{james.young@ucb.com}\\[4pt]
 }
 
 \date{Preprint --- May 2026}
@@ -94,16 +94,62 @@ bracket. Code and data: \url{https://github.com/jamesyoung93/treemmm}.
 boosted trees, heterogeneous treatment effects, panel data,
 interaction discovery, LightGBM
 
-\medskip
-\noindent\textbf{JEL codes:} C14, C23, M31, C53
-
 \newpage
 \tableofcontents
 \newpage
 
 %% ====================================================================
-\section{Motivation and Scope}
-\label{sec:motivation}
+\section{Introduction}
+\label{sec:intro}
+
+\subsection{The Market Mix Modeling Problem}
+\label{sec:problem}
+
+Market Mix Modeling (MMM) seeks to attribute observed commercial
+outcomes (sales, prescriptions, conversions) to promotional levers
+(advertising, sales force, digital marketing, trade promotions) while
+controlling for non-promotional factors (seasonality, competition,
+macroeconomics). The stakes are high: MMM outputs directly drive
+multi-million-dollar budget allocation decisions across the marketing
+portfolio.
+
+Two terms recur throughout this paper and deserve precise definitions
+up front. A \emph{Naive} baseline (GLMM-Naive, PyMC-Hier-Naive,
+GLMMDist-Naive) uses main effects only: the model knows the list of
+promotional and control variables but is given no information about
+which pairs interact, what shape each channel's response curve takes,
+or which distributional family generated the data. An \emph{Oracle}
+baseline (GLMM-Oracle, PyMC-Hier-Oracle, GLMMDist-Oracle) is handed
+the exact set of interaction pairs the DGP planted before fitting
+(it does \emph{not} receive the interaction coefficients, only which
+variable pairs to enter as product terms). The Oracle represents the
+upper bound for a regression baseline assuming the analyst already
+knows which channels co-modulate; it is unattainable in practice on
+real data.
+
+The headline benchmark metric is \emph{attribution-share MAPE}: for
+each method we extract per-channel attribution shares (SHAP-derived
+for trees, coefficient-derived for regression, posterior-mean-derived
+for Bayesian models, all renormalized so promo shares sum to one),
+then compute mean absolute percentage error against the DGP
+variance-attribution reference defined in \Cref{sec:metrics}. This is
+\emph{not} predictive MAPE on the outcome variable (reported separately
+as a calibration check in \Cref{sec:pred}).
+
+\subsection{Existing Tools}
+\label{sec:tools}
+
+The open-source MMM ecosystem is dominated by Bayesian and ridge
+regression approaches. Robyn (Meta) uses ridge regression with
+Nevergrad and provides no posterior distributions; Meridian (Google)
+implements hierarchical Bayesian MMM via MCMC but assumes parametric
+functional forms; PyMC-Marketing (PyMC Labs) is Bayesian via NUTS but
+requires the analyst to pre-specify saturation and adstock; Orbit
+(Uber) is a Bayesian structural time-series framework not purpose-built
+for MMM. Recent academic work has explored neural architectures (NNN,
+CausalMMM, DeepCausalMMM \citep{tirumala2025deepcausalmmm}). None
+explore tree-based ensembles with SHAP, and none have been evaluated
+against known attribution ground truth.
 
 \subsection{The ``Bayesian MMM is superior'' claim is regime-conditional}
 \label{sec:regime}
@@ -245,152 +291,83 @@ Defensible practice in either paradigm requires showing sensitivity,
 support, and identifiability for the recovered effects. \Cref{sec:diagnostics}
 documents which of these checks this paper has executed.
 
+\subsection{Diagnostics worth running}
+\label{sec:intro_diagnostics}
+
+Five diagnostics determine whether either paradigm is in defensible
+territory on a given dataset. All are exposed via the package's
+diagnostics API (\texttt{treemmm.core.diagnostics}); the audit of those
+executed in this paper appears in \Cref{sec:diagnostics}.
+
+\begin{itemize}
+  \item \textbf{Coverage check}: count training observations within a
+    neighborhood of each proposed counterfactual input; under
+    $\sim$30 nearest neighbors signals extrapolation regardless of
+    method.
+  \item \textbf{Identifiability check}: refit with prior variance
+    halved/doubled (Bayesian) or seed/hyperparameter perturbations
+    (tree). The half-and-double-sigma version is implemented for the
+    panel-Bayesian baseline and runs automatically (results in
+    \Cref{sec:prior_sensitivity}).
+  \item \textbf{Treatment-overlap check}: propensity scores for
+    promotional intensity; common support below 80\% across covariate
+    strata means no method recovers causal effects without strong
+    assumptions.
+  \item \textbf{Variation decomposition}: share of total predictor
+    variance living within-unit (temporal) vs.\ between-unit
+    (cross-sectional).
+  \item \textbf{Effective sample size per parameter}:
+    \texttt{arviz.ess} / parameter count (Bayesian), training rows /
+    leaves at max depth (tree). Below $\sim$20 obs/parameter, both
+    paradigms are weakly identified.
+\end{itemize}
+
+\subsection{The Gap and \TreeMMM's Contribution}
+\label{sec:gap}
+
+To our knowledge, no pip-installable package, peer-reviewed paper, or
+systematic benchmark exists for tree-based MMM with SHAP attribution.
+The closest prior art is a 2022 blog post noting ``it is still very
+difficult to find examples of SHAP usage in the MMM context'' and a
+minimal GitHub repository without SHAP.
+
+\TreeMMM\ addresses three specific limitations shared by existing
+tools:
+
+\begin{enumerate}
+  \item \textbf{Interaction discovery}. Major MMM tools require
+    manually specifying interaction terms. Trees discover interactions
+    automatically through split structure.
+  \item \textbf{Distribution-aware modeling}. Robyn and Meridian
+    default to Gaussian loss. \TreeMMM\ auto-detects the outcome
+    distribution and selects the appropriate objective function
+    (Poisson, Tweedie, Gamma, Gaussian).
+  \item \textbf{Link-function-aware attribution}. SHAP TreeExplainer
+    computes values in margin space. For log-link models, naive
+    exponentiation of SHAP values violates additivity. \TreeMMM's
+    decomposer handles this correctly.
+\end{enumerate}
+
+\subsection{Scope: Synthetic-Only Benchmarks}
+\label{sec:scope_synthetic}
+
+All benchmarks reported in this paper are on synthetic
+data-generating processes calibrated against pharma, CPG, and SaaS
+prior distributions (\Cref{sec:datasets}). Real-world validation
+against held-out outcomes, lift-study calibration, or refit stability
+on a real panel is deferred to follow-up work. The contribution is
+methodological: a panel-MMM tree-based building block (\TreeMMM) with
+documented behavior on canonical synthetic regimes, an apples-to-apples
+panel-Bayesian comparison that decouples paradigm from aggregation, and
+an open-source reproducible package. Regime-applicability guidance is
+anchored on the synthetic DGPs and should be revalidated when porting
+to a specific brand or panel.
+
 %% ====================================================================
-\section{Methods}
-\label{sec:methods}
-
-\subsection{Distribution-Aware Objective Selection}
-\label{sec:objective}
-
-\TreeMMM\ supports four objectives matched to outcome distributions:
-
-\begin{table}[H]
-\centering
-\caption{Supported objectives and their use cases.}
-\label{tab:objectives}
-\begin{tabular}{llp{6cm}}
-\toprule
-Distribution & Objective & When to Use \\
-\midrule
-Gaussian  & MSE       & Continuous, symmetric (revenue, value sales) \\
-Poisson   & Log-link  & Non-negative counts (Rx, orders, NPS) \\
-Tweedie   & Log-link  & Zero-inflated continuous (revenue with stockouts) \\
-Gamma     & Log-link  & Strictly positive continuous (per-transaction revenue) \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-An automated diagnostic examines discreteness, zero-inflation rate,
-skewness, and the mean-variance relationship to recommend an objective.
-The user can override this recommendation.
-
-\subsection{Link-Function-Aware Attribution Decomposition}
-\label{sec:decomposition}
-
-SHAP TreeExplainer computes values in margin space. For identity-link
-(Gaussian) models, SHAP values are directly additive on the response
-scale. For log-link (Poisson/Tweedie/Gamma) models, naive
-exponentiation breaks additivity: $\exp(a + b) \neq \exp(a) + \exp(b)$.
-\TreeMMM's decomposer uses unsigned proportional allocation:
-\begin{equation}
-\label{eq:attribution}
-  \hat{a}_i = \frac{|\phi_i|}{|\phi_0| + \sum_j |\phi_j|} \cdot \hat{y}
-\end{equation}
-where $\phi_i$ is the SHAP value for feature $i$, $\phi_0$ is the base
-value, and $\hat{y}$ is the model prediction. This guarantees (1)
-non-negative attributions (standard MMM practice), (2) attributions sum
-to the predicted outcome for every observation, and (3) the relative
-ranking of channels is preserved from the log-space SHAP values.
-
-\subsection{Temporal Cross-Validation}
-\label{sec:cv}
-
-\TreeMMM\ uses time-respecting validation to prevent future data
-leakage: rolling-origin training windows grow forward, and test windows
-are always future periods. The minimum training fraction is configurable
-(default: 50\% of periods). No observation from a future period ever
-appears in the training set.
-
-\subsection{Hyperparameter Tuning}
-\label{sec:tuning}
-
-Optuna Bayesian optimization tunes tree hyperparameters within each
-cross-validation fold: number of leaves, learning rate, regularization
-(L1/L2), feature/bagging fraction, and minimum child samples. The
-tuning objective is distribution-matched (Poisson deviance for counts,
-Tweedie deviance for zero-inflated outcomes, MSE for Gaussian).
-
-\subsection{Marginal ROI Simulation with Extrapolation Safety}
-\label{sec:mroi}
-
-The mROI simulator estimates response curves with a critical safety
-constraint: per-customer caps are set at the observed percentile
-(default: 95th), and higher aggregate engagement is achieved by
-spreading to more customers rather than pushing any individual beyond
-observed bounds. The constrained optimizer (scipy SLSQP) surfaces which
-customers have untapped marginal sensitivity, revealing that
-``see your top customers the most'' is often suboptimal.
-
-\subsection{Baseline Models}
-\label{sec:baselines}
-
-We compare \TreeMMM\ against five baselines spanning three modeling
-paradigms.
-
-\paragraph{GLMM-Naive.} Main effects only, random intercepts per
-customer (statsmodels MixedLM). Represents a typical analyst who does
-not specify interactions or distributional families.
-
-\paragraph{GLMM-Oracle.} Correctly specified interaction terms matching
-the DGP (statsmodels MixedLM). Represents an analyst with perfect
-knowledge of which variables interact.
-
-Both GLMM configurations use a log-transform workaround on non-Gaussian
-datasets (log-transform the outcome before fitting MixedLM), which
-approximates a log-normal model. This is a common practitioner
-workaround. A properly specified distributional GLMM (e.g.,
-\texttt{glmmTMB} in R) is not equivalent; see \Cref{sec:limitations}
-for discussion.
-
-\paragraph{PyMC-Hier-Naive.} A hierarchical Bayesian linear MMM fit
-on the full panel (3,000 entities $\times$ 36 periods, $\approx$108,000
-rows), with main effects only and a customer-level random intercept.
-Prior structure (after standardization): $\alpha \sim \mathcal{N}(0,5)$,
-$a_\text{cust} \sim \mathcal{N}(0, \sigma_\text{cust})$ with
-$\sigma_\text{cust} \sim \text{HalfNormal}(2)$,
-$\beta_\text{main} \sim \mathcal{N}(0,1)$, and
-$\sigma_\text{obs} \sim \text{HalfNormal}(1)$. Posterior sampling uses
-\texttt{nutpie} (Rust-backed NUTS) with four chains, 1,000 tuning and
-1,000 draw steps each.
-
-\paragraph{PyMC-Hier-Oracle.} Identical to PyMC-Hier-Naive but with the
-planted DGP interaction terms added as fixed effects
-($\beta_\text{inter} \sim \mathcal{N}(0,0.5)$). Forms the Bayesian
-counterpart of GLMM-Oracle.
-
-\paragraph{PyMC-Marketing.} The leading open-source Bayesian MMM
-\citep{pymcmarketing2025}, implementing NUTS sampling with geometric
-adstock and logistic saturation transforms on aggregate time-series (one
-row per time period, 36 rows). We use default weakly informative priors,
-\texttt{GeometricAdstock(l\_max=4)}, \texttt{LogisticSaturation()}, and
-the NumPyro sampler (500 draws, 500 tuning, 2 chains).
-
-\Cref{tab:pymc_variants} summarizes the three PyMC variants on axes
-that matter for interpreting results.
-
-\begin{table}[H]
-\centering
-\caption{Summary of PyMC model variants used in the benchmark.}
-\label{tab:pymc_variants}
-\small
-\begin{tabular}{p{2.5cm}p{2.8cm}p{2.8cm}p{2.8cm}}
-\toprule
-Axis & PyMC-Hier-Naive & PyMC-Hier-Oracle & PyMC-Marketing \\
-\midrule
-Data shape & Panel (108K rows) & Panel (108K rows) & Aggregate (36 rows) \\
-Random effects & Random intercept & Random intercept & None \\
-Fixed effects & Main effects & + DGP interactions & Main effects \\
-Adstock & None & None & Geometric \\
-Saturation & None & None & Logistic \\
-Headline non-linear MAPE & 22.7\%~$\pm$~0.3\% & 18.1\%~$\pm$~0.3\% & 75.1\%~$\pm$~5.5\% \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Experimental Design}
+\section{Data and Experimental Design}
 \label{sec:design}
 
-\subsubsection{Synthetic Datasets}
+\subsection{Synthetic Datasets}
 \label{sec:datasets}
 
 We evaluate on four synthetic datasets with known ground-truth DGPs
@@ -433,7 +410,7 @@ linear), $\beta_{i,k}$ is drawn from a segment-specific multivariate
 normal (heterogeneous customer sensitivity), and $\gamma$ controls
 interaction strength.
 
-\subsubsection{Evaluation Metrics}
+\subsection{Evaluation Metrics}
 \label{sec:metrics}
 
 The evaluation has two distinct axes that should not be conflated.
@@ -465,7 +442,7 @@ variance-attribution heuristic, not the Shapley decomposition of the
 DGP function; a Monte Carlo Shapley ground truth is planned for a
 future release.
 
-\subsubsection{Benchmark Configuration}
+\subsection{Benchmark Configuration}
 \label{sec:config}
 
 \TreeMMM\ is trained with LightGBM using 20 Optuna hyperparameter
@@ -983,7 +960,7 @@ explicitly that the comparison is in the asymptotic regime.
 \section{Diagnostics Framework}
 \label{sec:diagnostics}
 
-Three of the five regime diagnostics described in \Cref{sec:motivation}
+Three of the five regime diagnostics described in \Cref{sec:intro}
 are now runnable as one-line calls.
 
 \paragraph{Coverage check.} \texttt{treemmm.core.diagnostics.regime\_check.coverage\_check(X\_train, X\_simulated, radius, min\_neighbors)} counts training observations within a standardized-Euclidean radius of each counterfactual input. The default rule treats a simulated point as covered when at least 30 training neighbors fall inside half a standard deviation, passing when at least 80\% of simulated points clear that bar.
@@ -1033,6 +1010,148 @@ explored and is a limitation.
   \item Power analysis crossover points (full Table~9 population via
     \texttt{python paper/run\_power\_analysis.py}).
 \end{enumerate}
+
+%% ====================================================================
+\section{Methodology}
+\label{sec:methods}
+
+\subsection{Distribution-Aware Objective Selection}
+\label{sec:objective}
+
+\TreeMMM\ supports four objectives matched to outcome distributions:
+
+\begin{table}[H]
+\centering
+\caption{Supported objectives and their use cases.}
+\label{tab:objectives}
+\begin{tabular}{llp{6cm}}
+\toprule
+Distribution & Objective & When to Use \\
+\midrule
+Gaussian  & MSE       & Continuous, symmetric (revenue, value sales) \\
+Poisson   & Log-link  & Non-negative counts (Rx, orders, NPS) \\
+Tweedie   & Log-link  & Zero-inflated continuous (revenue with stockouts) \\
+Gamma     & Log-link  & Strictly positive continuous (per-transaction revenue) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+An automated diagnostic examines discreteness, zero-inflation rate,
+skewness, and the mean-variance relationship to recommend an objective.
+The user can override this recommendation.
+
+\subsection{Link-Function-Aware Attribution Decomposition}
+\label{sec:decomposition}
+
+SHAP TreeExplainer computes values in margin space. For identity-link
+(Gaussian) models, SHAP values are directly additive on the response
+scale. For log-link (Poisson/Tweedie/Gamma) models, naive
+exponentiation breaks additivity: $\exp(a + b) \neq \exp(a) + \exp(b)$.
+\TreeMMM's decomposer uses unsigned proportional allocation:
+\begin{equation}
+\label{eq:attribution}
+  \hat{a}_i = \frac{|\phi_i|}{|\phi_0| + \sum_j |\phi_j|} \cdot \hat{y}
+\end{equation}
+where $\phi_i$ is the SHAP value for feature $i$, $\phi_0$ is the base
+value, and $\hat{y}$ is the model prediction. This guarantees (1)
+non-negative attributions (standard MMM practice), (2) attributions sum
+to the predicted outcome for every observation, and (3) the relative
+ranking of channels is preserved from the log-space SHAP values.
+
+\subsection{Temporal Cross-Validation}
+\label{sec:cv}
+
+\TreeMMM\ uses time-respecting validation to prevent future data
+leakage: rolling-origin training windows grow forward, and test windows
+are always future periods. The minimum training fraction is configurable
+(default: 50\% of periods). No observation from a future period ever
+appears in the training set.
+
+\subsection{Hyperparameter Tuning}
+\label{sec:tuning}
+
+Optuna Bayesian optimization tunes tree hyperparameters within each
+cross-validation fold: number of leaves, learning rate, regularization
+(L1/L2), feature/bagging fraction, and minimum child samples. The
+tuning objective is distribution-matched (Poisson deviance for counts,
+Tweedie deviance for zero-inflated outcomes, MSE for Gaussian).
+
+\subsection{Marginal ROI Simulation with Extrapolation Safety}
+\label{sec:mroi}
+
+The mROI simulator estimates response curves with a critical safety
+constraint: per-customer caps are set at the observed percentile
+(default: 95th), and higher aggregate engagement is achieved by
+spreading to more customers rather than pushing any individual beyond
+observed bounds. The constrained optimizer (scipy SLSQP) surfaces which
+customers have untapped marginal sensitivity, revealing that
+``see your top customers the most'' is often suboptimal.
+
+\subsection{Baseline Models}
+\label{sec:baselines}
+
+We compare \TreeMMM\ against five baselines spanning three modeling
+paradigms.
+
+\paragraph{GLMM-Naive.} Main effects only, random intercepts per
+customer (statsmodels MixedLM). Represents a typical analyst who does
+not specify interactions or distributional families.
+
+\paragraph{GLMM-Oracle.} Correctly specified interaction terms matching
+the DGP (statsmodels MixedLM). Represents an analyst with perfect
+knowledge of which variables interact.
+
+Both GLMM configurations use a log-transform workaround on non-Gaussian
+datasets (log-transform the outcome before fitting MixedLM), which
+approximates a log-normal model. This is a common practitioner
+workaround. A properly specified distributional GLMM (e.g.,
+\texttt{glmmTMB} in R) is not equivalent; see \Cref{sec:limitations}
+for discussion.
+
+\paragraph{PyMC-Hier-Naive.} A hierarchical Bayesian linear MMM fit
+on the full panel (3,000 entities $\times$ 36 periods, $\approx$108,000
+rows), with main effects only and a customer-level random intercept.
+Prior structure (after standardization): $\alpha \sim \mathcal{N}(0,5)$,
+$a_\text{cust} \sim \mathcal{N}(0, \sigma_\text{cust})$ with
+$\sigma_\text{cust} \sim \text{HalfNormal}(2)$,
+$\beta_\text{main} \sim \mathcal{N}(0,1)$, and
+$\sigma_\text{obs} \sim \text{HalfNormal}(1)$. Posterior sampling uses
+\texttt{nutpie} (Rust-backed NUTS) with four chains, 1,000 tuning and
+1,000 draw steps each.
+
+\paragraph{PyMC-Hier-Oracle.} Identical to PyMC-Hier-Naive but with the
+planted DGP interaction terms added as fixed effects
+($\beta_\text{inter} \sim \mathcal{N}(0,0.5)$). Forms the Bayesian
+counterpart of GLMM-Oracle.
+
+\paragraph{PyMC-Marketing.} The leading open-source Bayesian MMM
+\citep{pymcmarketing2025}, implementing NUTS sampling with geometric
+adstock and logistic saturation transforms on aggregate time-series (one
+row per time period, 36 rows). We use default weakly informative priors,
+\texttt{GeometricAdstock(l\_max=4)}, \texttt{LogisticSaturation()}, and
+the NumPyro sampler (500 draws, 500 tuning, 2 chains).
+
+\Cref{tab:pymc_variants} summarizes the three PyMC variants on axes
+that matter for interpreting results.
+
+\begin{table}[H]
+\centering
+\caption{Summary of PyMC model variants used in the benchmark.}
+\label{tab:pymc_variants}
+\small
+\begin{tabular}{p{2.5cm}p{2.8cm}p{2.8cm}p{2.8cm}}
+\toprule
+Axis & PyMC-Hier-Naive & PyMC-Hier-Oracle & PyMC-Marketing \\
+\midrule
+Data shape & Panel (108K rows) & Panel (108K rows) & Aggregate (36 rows) \\
+Random effects & Random intercept & Random intercept & None \\
+Fixed effects & Main effects & + DGP interactions & Main effects \\
+Adstock & None & None & Geometric \\
+Saturation & None & None & Logistic \\
+Headline non-linear MAPE & 22.7\%~$\pm$~0.3\% & 18.1\%~$\pm$~0.3\% & 75.1\%~$\pm$~5.5\% \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 %% ====================================================================
 

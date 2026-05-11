@@ -6,7 +6,7 @@ TreeMMM: Tree-Based Marketing Mix Modeling with SHAP Attribution and Automatic I
 
 ## Authors
 
-James Young, PhD
+James Young
 
 ## Abstract (1,464 characters — within arxiv 1,920-character limit)
 

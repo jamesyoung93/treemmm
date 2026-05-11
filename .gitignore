@@ -57,3 +57,13 @@ UsersAdminAppDataLocalTemppytensor_cache/
 
 # Runtime output dirs (quickstart, demo)
 output/
+
+# Internal development artifacts (not direct TreeMMM product)
+paper/EXPERIMENT_LOG.md
+paper/oracle_vs_naive_finding.md
+
+# Stale build artifact (rebuild when arxiv-bound)
+paper/treemmm_arxiv.tar.gz
+
+# Reviewer bundle (rebuild via paper/build_reviewer_bundle.py)
+treemmm_reviewer_bundle.zip
