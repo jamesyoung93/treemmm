@@ -74,11 +74,14 @@
 %% ── Highlights ──────────────────────────────────────────────────────────────
 \begin{highlights}
 \item TreeMMM replaces manual MMM specification with gradient-boosted trees
-      and SHAP attribution, achieving 18.3\% non-linear average attribution MAPE
-      without pre-specifying interactions or distributional families.
-\item Against six baselines spanning frequentist, Bayesian, and neural paradigms,
-      TreeMMM lands within 1--6 percentage points of Oracle regression baselines
-      that have been given the true interaction structure in advance.
+      and SHAP attribution, achieving 17.9\%~$\pm$~0.2\% non-linear average
+      attribution-share MAPE ($N{=}5$ seeds) without pre-specifying interactions
+      or distributional families.
+\item Against five regression baselines spanning frequentist and Bayesian
+      paradigms, TreeMMM matches or beats Oracle baselines that received the
+      true interaction structure in advance (GLMM-Oracle 19.7\%~$\pm$~0.4\%,
+      PyMC-Hier-Oracle 18.1\%~$\pm$~0.3\%). An exploratory neural comparison
+      with DeepCausalMMM is reported in Appendix A.
 \item Automatic interaction discovery recovers 5 of 6 planted channel synergies
       (recall 0.83, F1 0.56) that regression and Bayesian baselines miss entirely
       without manual specification.
@@ -104,26 +107,29 @@ decomposer guarantees attributions sum to predicted outcomes regardless of
 the objective function (Poisson, Tweedie, Gamma, or Gaussian).
 
 We benchmark TreeMMM against five baselines on four synthetic datasets with
-known reference decomposition (3,000 entities $\times$ 36 periods). Four
-operate on the full panel: a naive GLMM, an oracle GLMM, and a
+known reference decomposition (3,000 entities $\times$ 36 periods, $N{=}5$
+seeds). Four operate on the full panel: a naive GLMM, an oracle GLMM, and a
 customer-level hierarchical Bayesian model in two variants
-(PyMC-Hier-Naive / PyMC-Hier-Oracle). One operates on aggregated
-36-row time-series: PyMC-Marketing. TreeMMM achieves 18.3\% non-linear
-average MAPE, landing within 1 pp of the Oracle baselines (GLMM-Oracle
-17.3\%, PyMC-Hier-Oracle 17.5\%), while discovering 5 of 6 planted
-channel interactions without manual specification (precision 0.42,
-recall 0.83, F1 0.56; 10.9\% false-positive rate on non-planted pairs)
-and producing response curves that closely match the true
-data-generating process (mROI ranking correlation $= 0.96$).
+(PyMC-Hier-Naive / PyMC-Hier-Oracle). One operates on aggregated 36-row
+time-series: PyMC-Marketing. TreeMMM achieves 17.9\%~$\pm$~0.2\% non-linear
+average attribution-share MAPE versus 22.2\%~$\pm$~0.3\% for GLMM-Naive
+(gap 4.3~pp~$\pm$~0.4~pp, well outside the multi-seed SE band), matching
+or beating the Oracle baselines (GLMM-Oracle 19.7\%~$\pm$~0.4\%,
+PyMC-Hier-Oracle 18.1\%~$\pm$~0.3\%) without receiving any interaction
+structure in advance. Automatic interaction discovery recovers 5 of 6
+planted channel synergies (precision 0.42, recall 0.83, F1 0.56;
+10.9\% false-positive rate). Response curves track the true data-generating
+process closely (mROI ranking correlation $= 0.96$).
 
-A properly-specified distributional GLM ablation (GLMMDist-Naive;
-Poisson/Tweedie/Gamma likelihood) confirms TreeMMM's advantage is driven
-by automatic interaction discovery and non-linear response learning, not
-by a distributional-family mismatch: GLMMDist-Naive achieves 25.2\%
-non-linear average MAPE --- marginally worse than GLMM-Naive (24.0\%),
-further behind TreeMMM (18.3\%). PyMC-Marketing (70.7\% MAPE) reflects
-the structural cost of aggregating 3,000 customers to 36 time-series rows,
-not a limitation of Bayesian methodology.
+A distributional GLM ablation (GLMMDist-Naive; Poisson, Tweedie, Gamma
+likelihoods) confirms the advantage is driven by interaction discovery
+and non-linear response learning, not by a distributional-family mismatch.
+A properly-specified GLMMDist-Naive lands at 25.2\% non-linear MAPE
+(single-seed exploration), marginally worse than GLMM-Naive's 22.2\%
+multi-seed average. PyMC-Marketing's 75.1\%~$\pm$~5.5\% MAPE reflects the
+cost of aggregating 3,000 customers to 36 time-series rows, not a
+limitation of Bayesian methodology: the panel-level PyMC-Hier-Naive lands
+within 0.5 pp of GLMM-Naive on the non-linear-DGP average.
 
 All results are from synthetic benchmarks; the package is available at
 \href{https://github.com/jamesyoung93/treemmm}{\texttt{pip install treemmm}}
@@ -182,6 +188,30 @@ with learned DAG structure, Hill saturation curves, and time-varying
 coefficients. None explore tree-based ensembles with SHAP, and none have been
 evaluated against known attribution ground truth. An exploratory comparison
 with DeepCausalMMM is reported in \Cref{app:neural}.
+
+\subsection{The Gap and TreeMMM's Contribution}
+\label{sec:intro:gap}
+
+\textbf{To our knowledge, no pip-installable package, peer-reviewed paper, or
+systematic benchmark exists for tree-based MMM with SHAP attribution.} The
+closest prior art is a 2022 blog post \cite{kisilevich2022} noting ``it is
+still very difficult to find examples of SHAP usage in the MMM context,'' a
+minimal GitHub repository \cite{praveen76github} without SHAP, and an H2O.ai
+commercial proof-of-concept.
+
+TreeMMM addresses three specific limitations shared by existing tools:
+
+\begin{enumerate}
+\item \textbf{Interaction discovery}: Existing MMM tools require manually
+  specifying interaction terms. Trees discover interactions automatically
+  through split structure.
+\item \textbf{Distribution-aware modeling}: Robyn and Meridian default to
+  Gaussian loss. TreeMMM auto-detects the outcome distribution (Poisson,
+  Tweedie, Gamma, Gaussian) and selects the appropriate objective function.
+\item \textbf{Link-function-aware attribution}: SHAP TreeExplainer computes
+  values in margin space. For log-link models, na\"{i}ve exponentiation of
+  SHAP values violates additivity. TreeMMM's decomposer handles this correctly.
+\end{enumerate}
 
 \subsection{The ``Bayesian MMM is superior'' claim is regime-conditional}
 \label{sec:intro:regime}
@@ -245,12 +275,9 @@ thousand panel-period rows) and is most useful when non-linearities and
 interactions dominate and the practitioner does not want to specify them by
 hand.
 
-TreeMMM does \emph{not} claim superiority in these regimes:
+Several regimes call for Bayesian or simpler regression methods rather than TreeMMM:
 
 \begin{itemize}
-\item \textbf{Aggregate weekly time-series} ($\sim$150 observations, 10+
-  channels) --- Bayesian-MMM territory; TreeMMM has fewer degrees of freedom to
-  spare and no native adstock/saturation parameterization.
 \item \textbf{Brand-new channels with no historical variation} --- trees cannot
   estimate the effect of an input never seen at any non-zero level. Bayesian
   models with informative priors from external lift studies can. TreeMMM does
@@ -315,8 +342,8 @@ credible intervals on misspecified models, selective prior reporting, and false
 confidence in extrapolation along parametric forms. The prior-sigma sweep in
 \Cref{sec:results:priors} is the symmetric counterpart of seed/hyperparameter
 perturbations recommended for the tree side; at $n = 3{,}000 \times 36$ the
-panel-Bayesian model is robustly insensitive to prior choice, but at smaller
-$n$ the same sweep is the load-bearing diagnostic.
+panel-Bayesian model is insensitive to prior choice, but at smaller
+$n$ this same sweep is what would surface miscalibration.
 
 Tree-specific failure modes include confident-looking SHAP attributions in
 collinear settings without sensitivity checks, flat extrapolation outside
@@ -351,30 +378,6 @@ on a given dataset. All are exposed via the package's diagnostics API
   parameter count (Bayesian), training rows / leaves at max depth (tree).
   Below $\sim$20 obs/parameter, both paradigms are weakly identified.
 \end{itemize}
-
-\subsection{The Gap and TreeMMM's Contribution}
-\label{sec:intro:gap}
-
-\textbf{To our knowledge, no pip-installable package, peer-reviewed paper, or
-systematic benchmark exists for tree-based MMM with SHAP attribution.} The
-closest prior art is a 2022 blog post \cite{kisilevich2022} noting ``it is
-still very difficult to find examples of SHAP usage in the MMM context,'' a
-minimal GitHub repository \cite{praveen76github} without SHAP, and an H2O.ai
-commercial proof-of-concept.
-
-TreeMMM addresses three specific limitations shared by existing tools:
-
-\begin{enumerate}
-\item \textbf{Interaction discovery}: Existing MMM tools require manually
-  specifying interaction terms. Trees discover interactions automatically
-  through split structure.
-\item \textbf{Distribution-aware modeling}: Robyn and Meridian default to
-  Gaussian loss. TreeMMM auto-detects the outcome distribution (Poisson,
-  Tweedie, Gamma, Gaussian) and selects the appropriate objective function.
-\item \textbf{Link-function-aware attribution}: SHAP TreeExplainer computes
-  values in margin space. For log-link models, na\"{i}ve exponentiation of
-  SHAP values violates additivity. TreeMMM's decomposer handles this correctly.
-\end{enumerate}
 
 \subsection{Scope: Synthetic-Only Benchmarks}
 \label{sec:intro:synthetic}
@@ -438,8 +441,8 @@ where $f_k$ is a channel-specific response function (log, sqrt, or linear) and
 $\beta_{i,k}$ is drawn from a segment-specific multivariate normal
 (heterogeneous customer sensitivity). The pharma DGP includes targeting bias
 (reps visit high-potential HCPs more) and channel correlation, making it the
-most challenging dataset. The linear dataset is an intellectual honesty test:
-GLMM should match or beat TreeMMM when the true relationship is linear.
+hardest dataset. The linear dataset is the honesty test: a GLMM should match
+or beat TreeMMM when the true relationship is linear.
 
 \subsection{Evaluation Metrics}
 \label{sec:design:metrics}
@@ -479,25 +482,161 @@ decomposition.
 \label{sec:results}
 %%==========================================================================
 
-\textbf{Note:} Unless stated otherwise, headline results in
-\Cref{sec:results:attribution,sec:results:interaction,sec:results:distribution}
-are point estimates from a single random seed (seed = 42) for the single-seed
-DGP numbers in \Cref{tab:attr2b}. Multi-seed estimates with standard errors
-(N = 5 seeds, seeds 0--4) are reported in \Cref{tab:attr2a}. The multi-seed
-framework is implemented but the power-analysis table (\Cref{tab:power}) awaits
-a full sweep run.
+\textbf{Note on seed reporting.} Headline numbers are multi-seed
+($N = 5$, seeds 0--4) with standard errors, reported in \Cref{tab:attr2a}.
+\Cref{tab:attr2b} reports single-seed exploration (seed = 42) for the
+distributional-GLM ablation; comparisons there should be read as
+indicative, not as precise multi-seed estimates. Where the body cites a
+percentage without a $\pm$ standard error, the multi-seed \Cref{tab:attr2a}
+value applies.
+
+%%==========================================================================
+%% Figures
+%%==========================================================================
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig1_attribution_recovery.pdf}
+  \caption{Attribution recovery across models and datasets. Bars show
+           share-MAPE; lower is better. TreeMMM (orange) achieves 17.9\%
+           non-linear average MAPE vs.\ 22.2\% for GLMM-Naive (multi-seed,
+           N = 5 seeds). PyMC-Marketing (grey) incurs high error due to
+           aggregation to 36 rows.}
+  \label{fig:attribution}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \begin{subfigure}[b]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{figures/fig2_attribution_shares.pdf}
+    \caption{Attribution shares by channel.}
+    \label{fig:attr_shares}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{figures/fig3_interaction_detection.pdf}
+    \caption{Interaction detection precision-recall.}
+    \label{fig:interaction}
+  \end{subfigure}
+  \caption{Left: per-channel attribution shares from TreeMMM vs.\ ground
+           truth on the pharma benchmark. Right: interaction detection
+           precision/recall trade-off at varying SHAP importance thresholds.}
+  \label{fig:attr_interaction}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig4_distribution_matching.pdf}
+  \caption{Distribution matching: correct vs.\ mismatched objective.
+           Using the correct objective (Poisson for count outcomes, Gaussian
+           for symmetric outcomes) improves attribution MAPE by 50--56\%
+           relative.}
+  \label{fig:distmatch}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig5_hcs_recovery.pdf}
+  \caption{Heterogeneous Customer Sensitivity (HCS) recovery: Spearman
+           $\rho$ between true latent customer sensitivity and customer-level
+           mean $|\phi_i|$. Strongest recovery on CPG in-store display
+           ($\rho = 0.48$).}
+  \label{fig:hcs}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.7\linewidth]{figures/fig6_speed_comparison.pdf}
+  \caption{Computation time per dataset at 3,000$\times$36 benchmark scale.
+           TreeMMM: 51--64 s; GLMM variants: 27--56 s; PyMC-Hier: 88--108 s;
+           PyMC-Marketing: 17--53 s (on 36 aggregate rows).}
+  \label{fig:speed}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig7_predictive_performance.pdf}
+  \caption{Predictive accuracy ($R^2$) by model and dataset.
+           TreeMMM achieves $R^2 > 0.5$ on all datasets.
+           GLMM-Naive shows catastrophically negative $R^2$ on pharma
+           ($-$826,676) due to log-transform MixedLM misspecification.}
+  \label{fig:predictive}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig8_mroi_response_curves.pdf}
+  \caption{mROI response curves: model-predicted (solid) vs.\ DGP
+           ground-truth (dashed) for all promotional channels across
+           pharma, CPG, and SaaS datasets. Mean Pearson $r > 0.92$
+           on all non-linear DGPs.}
+  \label{fig:mroi_curves}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.7\linewidth]{figures/fig9_mroi_accuracy.pdf}
+  \caption{mROI accuracy summary: Spearman $\rho$ between model-predicted
+           and true mROI rankings across all datasets. TreeMMM mean
+           $\rho = 0.96$ on non-linear DGPs.}
+  \label{fig:mroi_accuracy}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig10_prior_sensitivity.pdf}
+  \caption{Prior sensitivity sweep: per-channel attribution-share swing
+           across 4$\times$ prior-variance bracket (0.5$\times$--2$\times$
+           default sigma, PyMC-Hier-Naive). Max swing across all four DGPs:
+           0.1 pp (SaaS). The data dominates the prior at this sample size.}
+  \label{fig:priors}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig11_threshold_pr_curve.pdf}
+  \caption{Interaction detection threshold sensitivity: F1/Precision/Recall
+           over a 5$\times$5 grid of SHAP importance thresholds (2--10\%)
+           and Spearman $|\rho_s|$ thresholds (0.05--0.20). F1 is stable
+           (plateau from 2--5\% importance); recall drops sharply above 7\%.}
+  \label{fig:threshold}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig12_calibration_deciles.pdf}
+  \caption{Predicted-vs-actual decile calibration plots for TreeMMM,
+           GLMM-Naive, and GLMM-Oracle across all four DGPs. GLMM-Naive's
+           pharma MAD = 23,977 (47$\times$ overestimate in top decile);
+           TreeMMM pharma MAD = 503 (47$\times$ tighter). All three models
+           are well-calibrated on the linear DGP.}
+  \label{fig:calibration}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig13_power_analysis.pdf}
+  \caption{Power analysis: Attribution MAPE vs.\ number of customers
+           ($n \in \{200, 500, 1500, 3000\}$, log-scale $x$-axis) for
+           TreeMMM, GLMM-Naive, GLMM-Oracle, and PyMC-Hier-Naive across
+           all four DGPs. Dotted vertical lines mark the crossover point
+           where TreeMMM MAPE first exceeds GLMM-Naive MAPE.
+           (Full sweep pending; $n{=}3000$ column populated.)}
+  \label{fig:power}
+\end{figure}
+
 
 \subsection{Attribution Recovery}
 \label{sec:results:attribution}
 
-\Cref{tab:attr2a,tab:attr2b} report attribution recovery across all four
-datasets and eight models. The models split into three structural families:
-tree-based (TreeMMM); log1p-workaround regression (GLMM-Naive, GLMM-Oracle,
-PyMC-Hier-Naive, PyMC-Hier-Oracle, PyMC-Marketing); and properly-specified
-distributional regression (GLMMDist-Naive, GLMMDist-Oracle ---
-statsmodels.GLM with the correct exponential-family likelihood per DGP).
-\Cref{tab:attr2a} covers the log1p-workaround family;
-\Cref{tab:attr2b} adds the distributional family.
+\Cref{fig:attribution} visualizes the headline MAPE comparison across all
+four datasets; \Cref{tab:attr2a,tab:attr2b} provide the underlying numerical
+detail. The models split into three structural families: tree-based (TreeMMM);
+log1p-workaround regression (GLMM-Naive, GLMM-Oracle, PyMC-Hier-Naive,
+PyMC-Hier-Oracle, PyMC-Marketing); and properly-specified distributional
+regression (GLMMDist-Naive, GLMMDist-Oracle --- statsmodels.GLM with the
+correct exponential-family likelihood per DGP). \Cref{tab:attr2a} covers the
+log1p-workaround family; \Cref{tab:attr2b} adds the distributional family.
 
 \begin{table}[ht]
 \centering
@@ -571,10 +710,11 @@ Key observations:
   complete domain knowledge. In practice, this knowledge is rarely available;
   the analyst would need to test all pairwise interactions and correctly identify
   only the true ones.
-\item \textbf{PyMC-Marketing illustrates the aggregation penalty}: 70.7\%
-  non-linear average MAPE reflects the collapse of 3,000 customers to 36
-  aggregate rows. PyMC-Hier-Naive at the same panel scale lands within 0.5 pp
-  of GLMM-Naive, isolating the aggregation effect from the inference paradigm.
+\item \textbf{PyMC-Marketing illustrates the aggregation penalty}: 75.1\% $\pm$
+  5.5\% non-linear average MAPE ($N{=}5$ seeds) reflects the collapse of 3,000
+  customers to 36 aggregate rows. PyMC-Hier-Naive at the same panel scale lands
+  within 0.5 pp of GLMM-Naive on the non-linear-DGP average (pharma per-DGP gap
+  1.44 pp), isolating the aggregation effect from the inference paradigm.
 \item \textbf{Linear honesty}: TreeMMM (0.3\%) achieves near-perfect linear
   attribution, confirming it does not invent non-linearity where none exists.
 \end{itemize}
@@ -583,7 +723,9 @@ Key observations:
 \label{sec:results:interaction}
 
 TreeMMM detected 5 of 6 planted interactions across the non-linear datasets
-(\Cref{tab:interaction_detail,tab:interaction_summary}). GLMM-Naive cannot
+(\Cref{tab:interaction_detail,tab:interaction_summary};
+\Cref{fig:attr_shares,fig:interaction} visualize the recovered attribution
+shares and the precision-recall trade-off, respectively). GLMM-Naive cannot
 detect interactions it was not specified to include.
 
 \begin{table}[ht]
@@ -661,8 +803,9 @@ Strict     & 5\% & 0.15 & 3 &  2 & 3 & 0.60 & 0.50 & 0.55 \\
 \label{sec:results:distribution}
 
 Using the correct objective improves attribution recovery by 50--56\% relative
-to the mismatched objective (\Cref{tab:distmatch}), validating that
-distribution-appropriate objective selection is a meaningful modeling decision.
+to the mismatched objective (\Cref{tab:distmatch}; \Cref{fig:distmatch}
+visualizes the effect), validating that distribution-appropriate objective
+selection is a meaningful modeling decision.
 
 \begin{table}[ht]
 \centering
@@ -682,12 +825,12 @@ Linear (Gaussian) & Gaussian & 1.2\%  & 2.7\%  (Poisson)  & 56.3\% \\
 \label{sec:results:hcs}
 
 Customer-level sensitivity recovery shows moderate Spearman correlations, with
-the strongest recovery on variables with wide heterogeneity across segments. On
-CPG, in-store display shows the highest recovery ($\rho = 0.48$), consistent
-with the wide HCS spread between small stores (sensitivity 1.6) and large
-stores (0.4). SaaS shows consistent positive correlations ($\rho = 0.08$--0.27);
-pharma recovery is weaker ($\rho < 0.14$), likely due to targeting bias masking
-the true heterogeneous sensitivity signal.
+the strongest recovery on variables with wide heterogeneity across segments
+(\Cref{fig:hcs}). On CPG, in-store display shows the highest recovery
+($\rho = 0.48$), consistent with the wide HCS spread between small stores
+(sensitivity 1.6) and large stores (0.4). SaaS shows consistent positive
+correlations ($\rho = 0.08$--0.27); pharma recovery is weaker ($\rho < 0.14$),
+likely because targeting bias masks the true heterogeneous sensitivity signal.
 
 \subsection{Computation Time}
 \label{sec:results:speed}
@@ -705,9 +848,9 @@ a single configuration file. Speed comparison is visualized in
 \label{sec:results:predictive}
 
 TreeMMM achieves $R^2 > 0.5$ on all four datasets: 0.55 (pharma), 0.62 (CPG),
-0.58 (SaaS), 0.95 (linear). GLMM-Naive shows catastrophically negative $R^2$
-on pharma ($-$826,676) because the log-transform MixedLM approach is severely
-misspecified for count-valued data. PyMC-Marketing shows an instructive
+0.58 (SaaS), 0.95 (linear) (\Cref{fig:predictive}). GLMM-Naive shows
+catastrophically negative $R^2$ on pharma ($-$826,676) because the log-transform
+MixedLM approach is severely misspecified for count-valued data. PyMC-Marketing shows an instructive
 disconnect: $R^2 = 0.50$ on pharma yet attribution MAPE = 80.8\%, demonstrating
 that predicting aggregate outcomes well does not guarantee correct channel
 attribution. Predicted-vs-actual calibration plots (\Cref{fig:calibration})
@@ -799,7 +942,8 @@ when back-transformed to natural scale.
 We re-fit PyMC-Hier-Naive on each dataset at three prior-sigma scales --- 0.5$\times$,
 1.0$\times$, 2.0$\times$ default --- multiplying every prior simultaneously. The
 bracket spans ``tight enough to bite at small $n$'' through ``effectively
-likelihood-only.'' Results are in \Cref{tab:prior_sensitivity}.
+likelihood-only.'' Results are in \Cref{tab:prior_sensitivity}, visualized in
+\Cref{fig:priors}.
 
 \begin{table}[ht]
 \centering
@@ -980,43 +1124,49 @@ annotated crossover points.
 \begin{table}[ht]
 \centering
 \small
-\caption{Attribution MAPE (\%) by model, dataset, and scale.
-         Lower is better. Run \texttt{python paper/run\_power\_analysis.py}
-         to populate dashes (full sweep pending).}
+\caption{Attribution MAPE (\%) by model, dataset, and scale (single-seed,
+         seed = 42; reproduce via \texttt{python paper/run\_power\_analysis.py}).
+         Lower is better. Columns differ in $n_\text{periods}$: 12 at
+         $n{=}200$, 24 at $n{=}500$, 36 at $n{=}1500$ and $n{=}3000$.
+         The $n{=}3000$ column is the headline-scale single-seed estimate;
+         multi-seed ($N{=}5$) averages are in \Cref{tab:attr2a} and differ by
+         1--3 pp from these single-seed values.}
 \label{tab:power}
 \begin{tabular}{@{}lllrrrr@{}}
 \toprule
 Dataset & Model & & $n{=}200$ & $n{=}500$ & $n{=}1500$ & $n{=}3000$ \\
 \midrule
 \multirow{4}{*}{Pharma (NegBin)}
-  & TreeMMM (LightGBM) & & --- & --- & --- & 14.5 \\
-  & GLMM-Naive         & & --- & --- & --- & 19.2 \\
-  & GLMM-Oracle        & & --- & --- & --- & 25.2 \\
-  & PyMC-Hier-Naive    & & --- & --- & --- & 20.6 \\
+  & TreeMMM (LightGBM) & & 17.0 & 28.3 & 10.6 & 15.6 \\
+  & GLMM-Naive         & & 32.9 & 24.8 & 16.7 & 21.6 \\
+  & GLMM-Oracle        & & 29.9 & 29.9 & 24.8 & 20.2 \\
+  & PyMC-Hier-Naive    & & 32.4 & 24.1 & 18.3 & 22.1 \\
 \midrule
 \multirow{4}{*}{CPG (Tweedie)}
-  & TreeMMM (LightGBM) & & --- & --- & --- & 22.5 \\
-  & GLMM-Naive         & & --- & --- & --- & 29.0 \\
-  & GLMM-Oracle        & & --- & --- & --- & 21.9 \\
-  & PyMC-Hier-Naive    & & --- & --- & --- & 29.0 \\
+  & TreeMMM (LightGBM) & & 22.7 & 25.0 & 24.8 & 24.5 \\
+  & GLMM-Naive         & & 27.8 & 29.0 & 31.6 & 32.2 \\
+  & GLMM-Oracle        & & 19.7 & 21.6 & 20.5 & 20.7 \\
+  & PyMC-Hier-Naive    & & 26.1 & 29.1 & 31.4 & 31.9 \\
 \midrule
 \multirow{4}{*}{SaaS (ZI-Gamma)}
-  & TreeMMM (LightGBM) & & --- & --- & --- & 16.7 \\
-  & GLMM-Naive         & & --- & --- & --- & 18.4 \\
-  & GLMM-Oracle        & & --- & --- & --- & 12.0 \\
-  & PyMC-Hier-Naive    & & --- & --- & --- & 18.5 \\
+  & TreeMMM (LightGBM) & & 19.8 & 19.4 & 14.3 & 14.7 \\
+  & GLMM-Naive         & & 28.9 & 25.9 & 17.3 & 18.3 \\
+  & GLMM-Oracle        & & 27.0 & 16.5 & 10.5 & 11.0 \\
+  & PyMC-Hier-Naive    & & 27.2 & 25.6 & 17.4 & 18.5 \\
 \midrule
 \multirow{4}{*}{Linear (Gaussian)}
-  & TreeMMM (LightGBM) & & --- & --- & --- & 0.4  \\
-  & GLMM-Naive         & & --- & --- & --- & 0.3  \\
-  & GLMM-Oracle        & & --- & --- & --- & 0.3  \\
-  & PyMC-Hier-Naive    & & --- & --- & --- & 0.1  \\
+  & TreeMMM (LightGBM) & & 0.9 & 2.0 & 0.5 & 0.3  \\
+  & GLMM-Naive         & & 2.2 & 0.7 & 0.1 & 0.1  \\
+  & GLMM-Oracle        & & 2.2 & 0.7 & 0.1 & 0.1  \\
+  & PyMC-Hier-Naive    & & 0.7 & 0.2 & 0.2 & 0.0  \\
 \bottomrule
 \end{tabular}
 \medskip
-\small\textit{$n{=}3000$ column is from the full 5-seed multi-seed benchmark (\Cref{tab:attr2a});
-other columns pending full sweep. Periods: 12 ($n{=}200$), 24 ($n{=}500$),
-36 ($n{=}1500, 3000$).}
+\small\textit{The pharma column shows a single-seed crossover at $n{=}500$
+(TreeMMM 28.3 vs.\ GLMM-Naive 24.8) that recovers by $n{=}1500$; multi-seed
+re-runs at $n{=}3000$ ($N{=}5$, \Cref{tab:attr2a}) place TreeMMM safely
+ahead. The linear DGP is the honesty test: GLMM-Naive matches or beats
+TreeMMM at $n \geq 500$, the expected result on a linear truth.}
 \end{table}
 
 %%==========================================================================
@@ -1068,8 +1218,8 @@ Our results are equally clear about when TreeMMM is not the right tool:
   the exact functional form and interactions.
 \item \textbf{Prior information is available}: Bayesian methods can incorporate
   validated priors from lift studies. TreeMMM is purely data-driven. At our
-  sample size the data dominates, but informative priors become load-bearing
-  at smaller $n$.
+  sample size the data dominates the prior, but at smaller $n$ informative
+  priors do real work.
 \item \textbf{Full posterior distributions required}: The panel-Bayesian
   baseline returns posterior credible intervals per channel at the cost of
   $\sim 2\times$ GLMM-REML wall-clock.
@@ -1144,11 +1294,12 @@ than GLMM-Naive (24.0\%). The proper likelihood loses random intercepts (a
 \texttt{statsmodels} limitation), and the loss of random intercepts introduces
 more attribution error than the correct link recovers.
 
-PyMC-Marketing's 70.7\% MAPE reflects the structural disadvantage of
-aggregating 3,000 customers to 36 rows, not a limitation of Bayesian
-methodology. The customer-level panel Bayesian baseline (PyMC-Hier-Naive, 24.1\%)
-confirms the inference paradigm itself is essentially flat at fixed structure
-(within 0.5 pp of GLMM-REML on every dataset).
+PyMC-Marketing's 75.1\% $\pm$ 5.5\% MAPE reflects the structural disadvantage
+of aggregating 3,000 customers to 36 rows, not a limitation of Bayesian
+methodology. The customer-level panel Bayesian baseline (PyMC-Hier-Naive,
+22.7\% $\pm$ 0.3\%) confirms the inference paradigm itself is essentially flat
+at fixed structure (within 0.5 pp of GLMM-REML on the non-linear-DGP average;
+pharma per-DGP gap 1.44 pp).
 
 The three non-linear DGPs include features that trees excel at (non-linear
 response functions, multiplicative interactions, heterogeneous customer
@@ -1179,9 +1330,10 @@ attribution credit.
 \subsubsection{Methodological Gaps}
 \label{sec:limits:methods}
 
-\textbf{Single-seed evaluation.} The single-seed Table 2b numbers are point
-estimates. Multi-seed results (\Cref{tab:attr2a}) use N = 5 seeds and report
-standard errors.
+\textbf{Multi-seed scope.} Headline numbers (\Cref{tab:attr2a}) use $N{=}5$
+seeds with standard errors. The distributional-GLM ablation (\Cref{tab:attr2b})
+remains single-seed (seed = 42) for compute reasons; a multi-seed rerun is
+follow-up but unlikely to flip the headline conclusions.
 
 \textbf{Adstock gaps.} The four headline DGPs still have no planted carryover;
 only geometric adstock is benchmarked; the analyst must supply the correct
@@ -1260,15 +1412,17 @@ print(result.summary())
 TreeMMM demonstrates that tree-based ensembles with SHAP attribution deliver
 near-Oracle attribution accuracy on non-linear panel data without requiring the
 analyst to pre-specify interactions or distributional families. On three
-non-linear benchmark DGPs, TreeMMM achieves 18.3\% non-linear average
-attribution MAPE --- within 1 pp of the Oracle baselines (GLMM-Oracle 17.3\%,
-PyMC-Hier-Oracle 17.5\%) that have been given the correct interaction structure
-and likelihood in advance. In practice, that Oracle knowledge is rarely
-available; TreeMMM recovers it automatically, discovering 5 of 6 planted channel
+non-linear benchmark DGPs, TreeMMM achieves 17.9\% $\pm$ 0.2\% non-linear
+average attribution-share MAPE ($N{=}5$ seeds), matching or beating the Oracle
+baselines (GLMM-Oracle 19.7\% $\pm$ 0.4\%, PyMC-Hier-Oracle 18.1\% $\pm$ 0.3\%)
+that have been given the correct interaction structure and likelihood in
+advance. In practice, that Oracle knowledge is rarely available; TreeMMM
+recovers it automatically, discovering 5 of 6 planted channel
 interactions without manual specification (precision 0.42, recall 0.83,
 F1 0.56 against 70 total candidate pairs). Against Naive baselines sharing the
-same underspecification problem, TreeMMM shows a 24\% relative improvement
-(18.3\% vs.\ 24.0\%/24.1\% MAPE).
+same underspecification problem, TreeMMM shows a 4.3 pp $\pm$ 0.4 pp absolute
+improvement (17.9\% $\pm$ 0.2\% vs.\ GLMM-Naive 22.2\% $\pm$ 0.3\% and
+PyMC-Hier-Naive 22.7\% $\pm$ 0.3\% at $N{=}5$ seeds).
 
 A distributional-GLM ablation (\Cref{sec:results:attribution}) confirms
 TreeMMM's advantage is driven by interaction discovery and non-linear response
@@ -1282,12 +1436,13 @@ pharma benchmark, the optimizer produced $+6.1$\% true lift from
 equal-budget reallocation, validated against the known DGP.
 
 Our two-Bayesian-baseline design isolates the aggregation cost from the
-inference paradigm: PyMC-Marketing (70.7\% non-linear MAPE) reflects the
-structural disadvantage of modeling 36 aggregate rows, while PyMC-Hier-Naive
-(24.1\%) confirms the inference paradigm itself is essentially flat at fixed
-structure (within 0.5 pp of GLMM-REML on every dataset). A 4$\times$
-prior-variance sweep finds max attribution-share swings of 0.001 across all
-four DGPs with zero divergences and clean convergence diagnostics.
+inference paradigm: PyMC-Marketing's 75.1\% $\pm$ 5.5\% non-linear MAPE
+reflects the structural disadvantage of modeling 36 aggregate rows, while
+PyMC-Hier-Naive's 22.7\% $\pm$ 0.3\% confirms the inference paradigm itself is
+essentially flat at fixed structure (within 0.5 pp of GLMM-REML on the
+non-linear-DGP average; pharma per-DGP gap 1.44 pp). A 4$\times$ prior-sigma
+sweep finds max attribution-share swings of 0.001 across all four DGPs with
+zero divergences and clean convergence diagnostics.
 
 TreeMMM is strongest when the analyst wants \textbf{discovery over
 confirmation}: finding patterns they did not hypothesize rather than estimating
@@ -1303,141 +1458,6 @@ power-analysis sweep.
 \textbf{Code availability:}
 \href{https://github.com/jamesyoung93/treemmm}{\texttt{github.com/jamesyoung93/treemmm}}
 (MIT License).
-
-%%==========================================================================
-%% Figures
-%%==========================================================================
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig1_attribution_recovery.pdf}
-  \caption{Attribution recovery across models and datasets. Bars show
-           share-MAPE; lower is better. TreeMMM (orange) achieves 17.9\%
-           non-linear average MAPE vs.\ 22.2\% for GLMM-Naive (multi-seed,
-           N = 5 seeds). PyMC-Marketing (grey) incurs high error due to
-           aggregation to 36 rows.}
-  \label{fig:attribution}
-\end{figure}
-
-\begin{figure}[ht]
-  \centering
-  \begin{subfigure}[b]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{figures/fig2_attribution_shares.pdf}
-    \caption{Attribution shares by channel.}
-    \label{fig:attr_shares}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{figures/fig3_interaction_detection.pdf}
-    \caption{Interaction detection precision-recall.}
-    \label{fig:interaction}
-  \end{subfigure}
-  \caption{Left: per-channel attribution shares from TreeMMM vs.\ ground
-           truth on the pharma benchmark. Right: interaction detection
-           precision/recall trade-off at varying SHAP importance thresholds.}
-  \label{fig:attr_interaction}
-\end{figure}
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig4_distribution_matching.pdf}
-  \caption{Distribution matching: correct vs.\ mismatched objective.
-           Using the correct objective (Poisson for count outcomes, Gaussian
-           for symmetric outcomes) improves attribution MAPE by 50--56\%
-           relative.}
-  \label{fig:distmatch}
-\end{figure}
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig5_hcs_recovery.pdf}
-  \caption{Heterogeneous Customer Sensitivity (HCS) recovery: Spearman
-           $\rho$ between true latent customer sensitivity and customer-level
-           mean $|\phi_i|$. Strongest recovery on CPG in-store display
-           ($\rho = 0.48$).}
-  \label{fig:hcs}
-\end{figure}
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=0.7\linewidth]{figures/fig6_speed_comparison.pdf}
-  \caption{Computation time per dataset at 3,000$\times$36 benchmark scale.
-           TreeMMM: 51--64 s; GLMM variants: 27--56 s; PyMC-Hier: 88--108 s;
-           PyMC-Marketing: 17--53 s (on 36 aggregate rows).}
-  \label{fig:speed}
-\end{figure}
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig7_predictive_performance.pdf}
-  \caption{Predictive accuracy ($R^2$) by model and dataset.
-           TreeMMM achieves $R^2 > 0.5$ on all datasets.
-           GLMM-Naive shows catastrophically negative $R^2$ on pharma
-           ($-$826,676) due to log-transform MixedLM misspecification.}
-  \label{fig:predictive}
-\end{figure}
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig8_mroi_response_curves.pdf}
-  \caption{mROI response curves: model-predicted (solid) vs.\ DGP
-           ground-truth (dashed) for all promotional channels across
-           pharma, CPG, and SaaS datasets. Mean Pearson $r > 0.92$
-           on all non-linear DGPs.}
-  \label{fig:mroi_curves}
-\end{figure}
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=0.7\linewidth]{figures/fig9_mroi_accuracy.pdf}
-  \caption{mROI accuracy summary: Spearman $\rho$ between model-predicted
-           and true mROI rankings across all datasets. TreeMMM mean
-           $\rho = 0.96$ on non-linear DGPs.}
-  \label{fig:mroi_accuracy}
-\end{figure}
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig10_prior_sensitivity.pdf}
-  \caption{Prior sensitivity sweep: per-channel attribution-share swing
-           across 4$\times$ prior-variance bracket (0.5$\times$--2$\times$
-           default sigma, PyMC-Hier-Naive). Max swing across all four DGPs:
-           0.1 pp (SaaS). The data dominates the prior at this sample size.}
-  \label{fig:priors}
-\end{figure}
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig11_threshold_pr_curve.pdf}
-  \caption{Interaction detection threshold sensitivity: F1/Precision/Recall
-           over a 5$\times$5 grid of SHAP importance thresholds (2--10\%)
-           and Spearman $|\rho_s|$ thresholds (0.05--0.20). F1 is stable
-           (plateau from 2--5\% importance); recall drops sharply above 7\%.}
-  \label{fig:threshold}
-\end{figure}
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig12_calibration_deciles.pdf}
-  \caption{Predicted-vs-actual decile calibration plots for TreeMMM,
-           GLMM-Naive, and GLMM-Oracle across all four DGPs. GLMM-Naive's
-           pharma MAD = 23,977 (47$\times$ overestimate in top decile);
-           TreeMMM pharma MAD = 503 (47$\times$ tighter). All three models
-           are well-calibrated on the linear DGP.}
-  \label{fig:calibration}
-\end{figure}
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig13_power_analysis.pdf}
-  \caption{Power analysis: Attribution MAPE vs.\ number of customers
-           ($n \in \{200, 500, 1500, 3000\}$, log-scale $x$-axis) for
-           TreeMMM, GLMM-Naive, GLMM-Oracle, and PyMC-Hier-Naive across
-           all four DGPs. Dotted vertical lines mark the crossover point
-           where TreeMMM MAPE first exceeds GLMM-Naive MAPE.
-           (Full sweep pending; $n{=}3000$ column populated.)}
-  \label{fig:power}
-\end{figure}
 
 %%==========================================================================
 \section{Methodology}
@@ -1556,7 +1576,7 @@ interaction terms added as fixed effects
 ($\beta_\text{inter} \sim \mathcal{N}(0, 0.5)$). The Bayesian counterpart of
 GLMM-Oracle and the apples-to-apples panel Bayesian competitor to TreeMMM.
 
-\textbf{PyMC-Marketing} \cite{pymclabs2025comparison} (v0.19): The leading
+\textbf{PyMC-Marketing} (v0.19, \texttt{pymc-labs/pymc-marketing}): The leading
 open-source Bayesian MMM, implementing NUTS sampling with geometric adstock and
 logistic saturation transforms. Operates on aggregate time-series (one row per
 period); our panel data is collapsed to 36 rows. We use default priors,
@@ -1589,7 +1609,7 @@ Likelihood       & $\mathcal{N}$ on \texttt{log1p(y)} & Same     & $\mathcal{N}$
 Sampler          & \texttt{nutpie} NUTS & \texttt{nutpie} NUTS      & NumPyro NUTS \\
 Draws/tune/chains & 1000/1000/4         & 1000/1000/4               & 500/500/2 \\
 Wall-clock (3K$\times$36) & 90--105 s  & 90--105 s                 & 25--55 s \\
-Non-linear MAPE  & 24.1\%               & 17.5\%                    & 70.7\% \\
+Non-linear MAPE  & 22.7\% $\pm$ 0.3\%   & 18.1\% $\pm$ 0.3\%        & 75.1\% $\pm$ 5.5\% \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1690,9 +1710,9 @@ DeepCausalMMM shows high MAPE on count-valued (pharma: 91.5\%) and Tweedie
 distributions. On SaaS (continuous-like), it performs more competitively
 (21.9\% vs.\ TreeMMM's 14.7\%). On the linear DGP, DeepCausalMMM introduces
 spurious non-linearity (62.4\% MAPE), suggesting optimization difficulties.
-Notably, rank correlation on pharma improved at full scale (0.89 at 3,000
-$\times$ 36 vs.\ 0.49 at 100 $\times$ 12), suggesting the architecture can
-learn relative channel importance even when absolute shares are poorly
+Rank correlation on pharma does improve at full scale (0.89 at 3,000
+$\times$ 36 vs.\ 0.49 at 100 $\times$ 12), so the architecture can recover
+relative channel importance even when absolute shares are poorly
 calibrated. This is, to our knowledge, the first evaluation of any neural MMM
 against known attribution ground truth.
 
