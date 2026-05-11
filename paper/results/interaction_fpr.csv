@@ -1,0 +1,5 @@
+dataset,n_planted,tp,fp,fn,precision,recall,f1,false_positive_pairs
+pharma,3,2,1,1,0.6667,0.6667,0.6667,dtc_advertisingxsamples
+cpg,1,1,2,0,0.3333,1.0,0.5,tv_grpsxdigital_spend;tv_grpsxtrade_promo
+saas,2,2,4,0,0.3333,1.0,0.5,sdr_outreachxcontent_downloads;sdr_outreachxevent_attendance;content_downloadsxcsm_meetings;event_attendancexcsm_meetings
+linear,0,0,0,0,,,,

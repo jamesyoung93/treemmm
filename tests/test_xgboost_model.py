@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 try:
-    import xgboost
+    import xgboost  # noqa: F401  (availability check only)
     HAS_XGBOOST = True
 except ImportError:
     HAS_XGBOOST = False

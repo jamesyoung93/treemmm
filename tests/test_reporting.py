@@ -15,7 +15,7 @@ from treemmm.core.models.base import FoldResult, ModelResult
 from treemmm.core.reporting.zip_packager import package_zip
 
 try:
-    from pptx import Presentation
+    from pptx import Presentation  # noqa: F401  (availability check only)
     HAS_PPTX = True
 except ImportError:
     HAS_PPTX = False

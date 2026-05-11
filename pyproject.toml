@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "treemmm"
-version = "0.1.0"
+version = "0.2.1"
 description = "Tree-based Market Mix Modeling with SHAP attribution"
 readme = "README.md"
 license = "MIT"
@@ -25,8 +25,6 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 
-[project.scripts]
-treemmm = "treemmm.ui.cli_runner:main"
 dependencies = [
     "numpy>=1.24",
     "pandas>=2.0",
@@ -40,16 +38,24 @@ dependencies = [
     "seaborn>=0.13",
 ]
 
+[project.urls]
+Homepage = "https://github.com/jamesyoung93/treemmm"
+Documentation = "https://github.com/jamesyoung93/treemmm#readme"
+Repository = "https://github.com/jamesyoung93/treemmm"
+
+[project.scripts]
+treemmm = "treemmm.ui.cli_runner:main"
+
 [project.optional-dependencies]
 xgboost = ["xgboost>=2.0"]
 catboost = ["catboost>=1.2"]
-bayesian = ["pymc-marketing>=0.8"]
+bayesian = ["pymc-marketing>=0.15"]
 reporting = ["python-pptx>=0.6", "openpyxl>=3.1"]
 ui = ["ipywidgets>=8.0"]
 all = [
     "xgboost>=2.0",
     "catboost>=1.2",
-    "pymc-marketing>=0.8",
+    "pymc-marketing>=0.15",
     "python-pptx>=0.6",
     "openpyxl>=3.1",
     "ipywidgets>=8.0",
@@ -69,3 +75,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "slow: deselect with -m 'not slow' to skip slow tests (>10s)",
+    "headline: paper headline-number regression tests (read pre-computed CSVs; fast)",
+]

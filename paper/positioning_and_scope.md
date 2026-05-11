@@ -54,6 +54,25 @@ Under these four shifts, tree-based methods with SHAP attribution are
 competitive with or superior to Bayesian MMM for most promotional
 decisions. Under the classical aggregate regime, they are not.
 
+This paper makes the empirical version of that claim concrete by
+benchmarking two Bayesian baselines side by side: the conventional
+aggregate-level PyMC-Marketing (one row per period, 36 rows total)
+and a panel-level hierarchical PyMC fit on the same 108,000-row panel
+the tree-based and frequentist baselines see (Section 2.6). The
+canonical Results section (TreeMMM_White_Paper.md §5) shows the
+panel-level Bayesian and panel-level frequentist (GLMM) fits land
+within 0.5 percentage points of each other on attribution share-MAPE
+on the non-linear-DGP average (per-DGP gap ≤ 1.44pp on pharma, ≤
+0.15pp on CPG and SaaS), while the aggregate-level Bayesian is 18 to
+70 percentage points worse than the panel methods on the same
+non-linear DGPs (pharma 70.2pp, CPG 67.1pp, SaaS 17.8pp). The prior
+sensitivity check (TreeMMM_White_Paper.md §5.5.2) verifies this is
+not a prior-choice artifact — a 4× sweep of every prior sigma moves
+attribution shares by less than 0.001 on every channel on every DGP,
+so at this sample size the data dominates the prior. The paradigm
+contrast nearly collapses; the structural contrast (panel vs.
+aggregate) does not.
+
 ## 2. What TreeMMM is and is not designed for
 
 TreeMMM is designed for HCP-level (or store-level, account-level, or
@@ -83,10 +102,17 @@ external lift studies can. TreeMMM does not solve cold-start.
 
 Decisions that require formal probabilistic statements with
 parameter-level credible intervals are also outside TreeMMM's scope. It
-provides prediction intervals via conformalized quantile regression and
-bootstrap, not parametric posterior intervals. If a decision contract
-requires a 90% credible interval on the rep-visit elasticity, use a
-Bayesian model.
+provides prediction intervals via conformalized quantile regression
+(Romano et al., 2019) and bootstrap resampling, not parametric
+posterior intervals. If a decision contract
+requires a 90% credible interval on the rep-visit elasticity, the
+panel-Bayesian baseline `_train_pymc_hierarchical` we use as the
+apples-to-apples comparison in TreeMMM_White_Paper.md §5 (Results) is a drop-in replacement that
+returns posterior CIs per coefficient and per attribution share at the
+same panel scale and similar attribution accuracy. Aggregate Bayesian
+MMM (PyMC-Marketing, Meridian) is the right tool when the data is
+genuinely sparse weekly time-series and the posterior structure must
+include parametric adstock/saturation curves.
 
 Selection on unobservables is a problem neither paradigm solves. Where
 unobserved confounding is the dominant concern, the right tool is
@@ -124,9 +150,10 @@ linear_baseline) are designed to live on the right-hand branch. The
 linear DGP is included as the honesty test. When the data-generating
 process is linear and Gaussian, which is the natural home turf of a
 GLMM or Bayesian regression, TreeMMM should not dominate. The
-benchmark in Section 3 confirms this. On the linear DGP TreeMMM
-posts 0.3% attribution-share MAPE against GLMM-Naive's 0.1%, the
-expected result for the honesty test.
+benchmark in TreeMMM_White_Paper.md §5 (Results) confirms this. On
+the linear DGP TreeMMM posts 0.4% ± 0.1% attribution-share MAPE
+(multi-seed, Table 2a) against GLMM-Naive's 0.3% ± 0.0%, the expected
+result for the honesty test.
 
 ## 4. Risks of misuse, symmetric across paradigms
 
@@ -138,7 +165,13 @@ desired conclusions, identifiability problems masked by smooth
 posteriors, MCMC convergence theater (R-hat at 1.01 declared "fine"
 without further checking), false precision from credible intervals on
 misspecified models, selective prior reporting, and false confidence in
-extrapolation along parametric forms.
+extrapolation along parametric forms. The prior-sigma sweep we run
+in TreeMMM_White_Paper.md §5.5.2 is the symmetric counterpart of the seed and
+hyperparameter perturbations recommended for the tree side; at our
+sample size (3,000 customers × 36 months (3 years of data)) the panel-Bayesian model
+is robustly insensitive to prior choice, but at the smaller-n regimes
+where Bayesian methods are most useful this same sweep is the
+load-bearing diagnostic.
 
 Tree-specific failure modes include confident-looking SHAP attributions
 in collinear settings without sensitivity checks, flat extrapolation
@@ -167,7 +200,11 @@ extrapolating regardless of method.
 An identifiability check refits with prior variance halved or doubled
 on the Bayesian side, or with seed and hyperparameter perturbations on
 the tree side. If channel-level outputs swing more than the decision
-threshold, the parameters or attributions are not identified.
+threshold, the parameters or attributions are not identified. The
+half-and-double-sigma version of this check is implemented for the
+panel-Bayesian baseline `_train_pymc_hierarchical` and run automatically
+by `paper/run_benchmarks.py`; results appear in TreeMMM_White_Paper.md
+§5.5.2 and Figure 10.
 
 A treatment-overlap check fits propensity scores for promotional
 intensity. Common support below 80% across covariate strata means no

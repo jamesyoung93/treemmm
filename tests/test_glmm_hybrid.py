@@ -7,8 +7,6 @@ import pandas as pd
 import pytest
 
 from treemmm.core.models.glmm_hybrid import (
-    TreeGLMMHybrid,
-    TreeGLMMHybridConfig,
     build_tree_glmm_hybrid,
 )
 

@@ -20,13 +20,12 @@ Usage:
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
 from scipy import optimize
 
-from treemmm.core.attribution.decomposer import Attribution
 from treemmm.core.config import RunConfig
 from treemmm.core.models.base import BaseModel
 
@@ -299,16 +298,12 @@ def _optimize_reallocation(
     Returns:
         (optimal_allocation, predicted_lift_pct)
     """
-    n_vars = len(promo_vars)
     constraint_map = {c.variable: c for c in constraints}
 
     # Current allocation
     current = np.array([constraint_map[v].current_aggregate for v in promo_vars])
     if total_budget is None:
         total_budget = float(current.sum())
-
-    current_total = float(current.sum())
-    n = len(X_base)
 
     # Baseline prediction with current data
     baseline_mean = float(np.mean(model.predict(X_base)))
@@ -331,10 +326,9 @@ def _optimize_reallocation(
         c = constraint_map[var]
         bounds.append((0.0, c.current_aggregate * 1.5))
 
-    # Total budget constraint
-    budget_constraint = optimize.LinearConstraint(
-        np.ones(n_vars), lb=0, ub=total_budget,
-    )
+    # Total budget constraint is enforced via the `constraints=` kwarg below
+    # (np.ones(n_vars) @ x <= total_budget); no separate LinearConstraint object
+    # is needed.
 
     result = optimize.minimize(
         objective,
@@ -382,6 +376,11 @@ def simulate_mroi(
     feature_cols = config.columns.all_feature_cols()
 
     X_base = df[feature_cols].copy()
+
+    # Convert categorical features to category dtype (must match training)
+    for col in config.columns.categorical_vars:
+        if col in X_base.columns:
+            X_base[col] = X_base[col].astype("category")
 
     # Compute constraints from observed data
     constraints = _compute_constraints(

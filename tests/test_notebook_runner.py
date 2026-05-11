@@ -1,6 +1,7 @@
 """Tests for the notebook runner."""
 
 import matplotlib
+
 matplotlib.use("Agg")
 
 import numpy as np

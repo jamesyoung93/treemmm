@@ -49,10 +49,7 @@ def _make_synthetic_data(
                 y = rng.poisson(max(0.1, np.exp(eta * 0.3)))
             elif objective == Objective.TWEEDIE:
                 # Simulate zero-inflated: 30% zeros, rest exponential
-                if rng.random() < 0.3:
-                    y = 0.0
-                else:
-                    y = rng.exponential(max(0.1, eta))
+                y = 0.0 if rng.random() < 0.3 else rng.exponential(max(0.1, eta))
             elif objective == Objective.GAMMA:
                 y = rng.gamma(shape=2.0, scale=max(0.1, eta / 2))
             else:
@@ -157,7 +154,7 @@ def test_pipeline_auto_objective():
         n_optuna_trials=3,
         random_state=42,
     )
-    result = run(df, config)
+    run(df, config)
     # Should have resolved to Poisson (integer count data)
     assert isinstance(config.objective, Objective)
     assert config.objective in (Objective.POISSON, Objective.TWEEDIE)

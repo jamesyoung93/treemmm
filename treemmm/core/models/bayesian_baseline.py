@@ -103,9 +103,7 @@ class BayesianRidgeMMM(BaseModel):
         numeric_cols: list[str] = []
         for c in X.columns:
             col = X[c]
-            if pd.api.types.is_numeric_dtype(col) or pd.api.types.is_bool_dtype(col):
-                numeric_cols.append(c)
-            elif isinstance(col.dtype, pd.CategoricalDtype) and pd.api.types.is_numeric_dtype(
+            if pd.api.types.is_numeric_dtype(col) or pd.api.types.is_bool_dtype(col) or isinstance(col.dtype, pd.CategoricalDtype) and pd.api.types.is_numeric_dtype(
                 col.cat.categories
             ):
                 numeric_cols.append(c)
@@ -327,9 +325,7 @@ class PyMCBayesianMMM(BaseModel):
         numeric_cols: list[str] = []
         for c in X.columns:
             col = X[c]
-            if pd.api.types.is_numeric_dtype(col) or pd.api.types.is_bool_dtype(col):
-                numeric_cols.append(c)
-            elif isinstance(col.dtype, pd.CategoricalDtype) and pd.api.types.is_numeric_dtype(
+            if pd.api.types.is_numeric_dtype(col) or pd.api.types.is_bool_dtype(col) or isinstance(col.dtype, pd.CategoricalDtype) and pd.api.types.is_numeric_dtype(
                 col.cat.categories
             ):
                 numeric_cols.append(c)
@@ -392,7 +388,7 @@ class PyMCBayesianMMM(BaseModel):
         n_main = len(self._numeric_features)
         n_inter = len(design_cols) - n_main
 
-        with pm.Model() as model:
+        with pm.Model():
             alpha = pm.Normal("alpha", mu=0.0, sigma=self._config.intercept_prior_sigma)
 
             beta_main = pm.Normal(
@@ -546,22 +542,24 @@ def configure_pytensor_compiler(
 ) -> None:
     """Best-effort: enable PyTensor C compilation by adding mingw to PATH.
 
-    On Anaconda for Windows, `conda install -c conda-forge m2w64-toolchain`
-    installs g++ at `<anaconda>/Library/mingw-w64/bin/g++.exe`. PyTensor
+    On Anaconda for Windows, ``conda install -c conda-forge m2w64-toolchain``
+    installs ``g++`` at ``<anaconda>/Library/mingw-w64/bin/g++.exe``. PyTensor
     looks for it on PATH at import time. This helper:
 
-    1. Prepends the mingw-w64 bin dir to PATH so g++ is discoverable.
-    2. Picks a writable compile directory (default `C:/Temp/pytensor_cache`)
-       — the OS-default lives under `%LOCALAPPDATA%/Packages/<sandbox>` on
-       sandboxed Claude/Windows sessions and is intermittently swept,
-       which crashes pytensor mid-compile.
-    3. Sets `PYTENSOR_FLAGS` and (if pytensor is already imported)
-       directly mutates `pytensor.config.compiledir` and `cxx`.
+    1. Prepends the mingw-w64 bin dir to PATH so ``g++`` is discoverable.
+    2. Picks a writable compile directory.  The default lives under the
+       OS temp directory (``tempfile.gettempdir()/pytensor_cache``), which
+       avoids issues with restricted-write user-profile locations on some
+       Windows environments where the standard pytensor cache path is
+       intermittently swept and crashes pytensor mid-compile.
+    3. Sets ``PYTENSOR_FLAGS`` and (if pytensor is already imported)
+       directly mutates ``pytensor.config.compiledir`` and ``cxx``.
 
     No-op on non-Windows or if the toolchain is not present.
     """
     import os as _os
     import sys as _sys
+    import tempfile as _tempfile
 
     if _sys.platform != "win32":
         return
@@ -576,7 +574,7 @@ def configure_pytensor_compiler(
         _os.environ["PATH"] = mingw_bin_dir + _os.pathsep + _os.environ.get("PATH", "")
 
     if compiledir is None:
-        compiledir = r"C:\Temp\pytensor_cache"
+        compiledir = _os.path.join(_tempfile.gettempdir(), "pytensor_cache")
     _os.makedirs(compiledir, exist_ok=True)
 
     existing = _os.environ.get("PYTENSOR_FLAGS", "")

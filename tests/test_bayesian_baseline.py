@@ -7,8 +7,6 @@ import pandas as pd
 import pytest
 
 from treemmm.core.models.bayesian_baseline import (
-    BayesianRidgeMMM,
-    PyMCBayesianMMM,
     build_bayesian_ridge,
     build_pymc_bayesian,
     is_pymc_available,

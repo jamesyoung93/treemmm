@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from treemmm.core.config import Objective
 from treemmm.core.interpret.interaction_discovery import (
@@ -131,7 +130,7 @@ class TestFilterSignificantInteractions:
                 var1=f"v{2*i}", var2=f"v{2*i+1}",
                 score=s, correlation=c, rank=i + 1,
             )
-            for i, (s, c) in enumerate(zip(scores, corrs))
+            for i, (s, c) in enumerate(zip(scores, corrs, strict=False))
         ]
         return InteractionDiscoveryResult(
             candidates=cands,

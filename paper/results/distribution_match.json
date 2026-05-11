@@ -1,8 +1,8 @@
 {
   "pharma_poisson_mape": 12.134779951090696,
-  "pharma_gaussian_mape": 24.465145341807958,
+  "pharma_gaussian_mape": 24.465145341807954,
   "pharma_correct_wins": true,
-  "linear_gaussian_mape": 1.1658881461374353,
-  "linear_poisson_mape": 2.666645683702227,
+  "linear_gaussian_mape": 1.1658881461374355,
+  "linear_poisson_mape": 2.6666456837022268,
   "linear_correct_wins": true
 }

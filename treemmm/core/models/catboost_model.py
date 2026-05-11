@@ -105,7 +105,7 @@ class CatBoostModel(BaseModel):
     ) -> dict:
         """Train with Optuna hyperparameter tuning."""
         try:
-            from catboost import CatBoostRegressor, Pool
+            from catboost import CatBoostRegressor
         except ImportError as e:
             raise ImportError(
                 "CatBoost is not installed. Install with: pip install treemmm[catboost]"

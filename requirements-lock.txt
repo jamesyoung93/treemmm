@@ -1,0 +1,17 @@
+# Pinned dependency versions used for TreeMMM v0.1.0 benchmark results.
+# Generated 2026-02-26 on Python 3.13, Windows 11.
+# Use: pip install -r requirements-lock.txt
+numpy==2.4.2
+pandas==2.3.3
+scipy==1.17.1
+scikit-learn==1.8.0
+statsmodels==0.14.6
+lightgbm==4.6.0
+shap==0.50.0
+optuna==4.7.0
+matplotlib==3.10.8
+seaborn==0.13.2
+# Optional dependencies (used in benchmarks)
+xgboost==3.2.0
+fpdf2==2.8.6
+Markdown==3.10.2

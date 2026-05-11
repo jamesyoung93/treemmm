@@ -1,10 +1,9 @@
 """Tests for the paper benchmark runner and figure generator."""
 
-import json
-import tempfile
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 
 import numpy as np
@@ -15,14 +14,19 @@ from paper.run_benchmarks import (
     BenchmarkSuite,
     DatasetResult,
     ModelMetrics,
+    PriorSensitivityRow,
     _compute_attribution_mape,
     _compute_rank_correlation,
-    _detect_interactions_shap,
     _promo_only_shares,
+    _run_prior_sensitivity,
     _train_lgbm,
+    _train_pymc_hierarchical,
     run_dataset,
     run_distribution_match_test,
 )
+
+# Repository root → resolves to paper/results/ regardless of pytest cwd.
+RESULTS_DIR = Path(__file__).resolve().parents[1] / "paper" / "results"
 
 
 class TestMetricFunctions:
@@ -145,7 +149,7 @@ class TestRunDataset:
         )
         result = run_dataset("linear_test", ds, config, n_optuna_trials=3)
         assert result.dataset_name == "linear_test"
-        assert len(result.model_metrics) == 3  # TreeMMM + Naive + Oracle
+        assert len(result.model_metrics) >= 3  # TreeMMM + Naive + Oracle (+ DeepCausalMMM if available)
         names = [m.model_name for m in result.model_metrics]
         assert "TreeMMM (LightGBM)" in names
         assert "GLMM-Naive" in names
@@ -166,3 +170,130 @@ class TestDistributionMatch:
         assert "linear_poisson_mape" in results
         assert isinstance(results["pharma_correct_wins"], bool)
         assert isinstance(results["linear_correct_wins"], bool)
+
+
+class TestHierarchicalPyMC:
+    """Smoke tests for the customer-level hierarchical Bayesian baseline."""
+
+    @pytest.mark.slow
+    def test_train_pymc_hierarchical_returns_shares(self):
+        """Linear DGP, no interactions: shares should sum to ~1 and match true."""
+        from treemmm.demo.datasets.linear_baseline import (
+            generate_linear_dataset,
+            linear_run_config,
+        )
+        ds = generate_linear_dataset(n_customers=40, n_periods=8, random_state=42)
+        cfg = linear_run_config(ds)
+
+        shares, r2, wmape = _train_pymc_hierarchical(
+            ds.df, cfg,
+            interaction_terms=None,
+            random_state=42,
+            draws=200, tune=200, chains=2,
+        )
+        assert isinstance(shares, dict)
+        # Shares should sum to ~1 (base + features)
+        total = sum(s for s in shares.values())
+        assert abs(total - 1.0) < 0.05
+        # On linear data, Bayesian Hier-Naive should produce a positive R²
+        assert r2 > 0.5
+        # Spotcheck the dominant channel survives in shares
+        promo_shares = {v: shares.get(v, 0.0) for v in cfg.columns.promo_vars}
+        assert max(promo_shares.values()) > 0.2
+
+    @pytest.mark.slow
+    def test_prior_sensitivity_sweep_returns_rows(self):
+        """The sweep should produce one PriorSensitivityRow per (scale, channel)."""
+        from treemmm.demo.datasets.linear_baseline import (
+            generate_linear_dataset,
+            linear_run_config,
+        )
+        ds = generate_linear_dataset(n_customers=40, n_periods=8, random_state=42)
+        cfg = linear_run_config(ds)
+
+        rows = _run_prior_sensitivity(
+            "linear_smoke", ds.df, cfg,
+            prior_scales=(0.5, 1.0, 2.0),
+            draws=150, tune=150, chains=2,
+            random_state=42,
+        )
+        # 3 prior scales * 3 promo channels (linear DGP has channel_a/b/c)
+        assert len(rows) == 9
+        assert all(isinstance(r, PriorSensitivityRow) for r in rows)
+        # Each row should have a valid share_mean and a finite R-hat
+        for r in rows:
+            assert 0.0 <= r.share_mean <= 1.0 + 1e-6
+            assert r.share_ci5 <= r.share_mean <= r.share_ci95 + 1e-6
+
+
+# ---------------------------------------------------------------------------
+# Headline-number regression tests
+#
+# These tests read pre-computed multi-seed benchmark CSVs and assert that the
+# paper's headline attribution-MAPE and interaction-detection F1 fall inside
+# tight bands.  They do NOT re-run benchmarks (too slow); they protect against
+# accidental edits that would change the numbers reported in the paper.
+# ---------------------------------------------------------------------------
+@pytest.mark.headline
+def test_pharma_headline_mape():
+    """TreeMMM headline non-linear-average MAPE is 17.9% ± 0.2% (paper Sec 5.1).
+
+    Reads ``paper/results/benchmark_multiseed_raw.csv``, groups by
+    ``model`` × ``dataset``, then averages per-dataset means across the
+    three non-linear DGPs (pharma, cpg, saas).  The headline number
+    advertised in the abstract / Sec 5.1 must land inside [17.0%, 19.0%]
+    with per-dataset standard error ≤ 0.4 percentage points.
+    """
+    raw_path = RESULTS_DIR / "benchmark_multiseed_raw.csv"
+    assert raw_path.exists(), f"Missing benchmark CSV: {raw_path}"
+    raw = pd.read_csv(raw_path)
+
+    treemmm = raw[raw["model"] == "TreeMMM (LightGBM)"]
+    non_linear = treemmm[treemmm["dataset"].isin(["pharma", "cpg", "saas"])]
+    assert not non_linear.empty, "No TreeMMM rows for non-linear datasets in CSV"
+
+    # Per-dataset means and SE across seeds
+    per_ds = non_linear.groupby("dataset")["attribution_mape"].agg(
+        ["mean", "std", "count"]
+    )
+    per_ds["se"] = per_ds["std"] / np.sqrt(per_ds["count"])
+
+    # Per-dataset SE budget
+    for ds_name, row in per_ds.iterrows():
+        assert row["se"] <= 0.4, (
+            f"Per-dataset SE budget exceeded for {ds_name}: "
+            f"SE={row['se']:.3f} (limit 0.4)"
+        )
+
+    # Non-linear average (mean of per-dataset means)
+    headline = float(per_ds["mean"].mean())
+    assert 17.0 <= headline <= 19.0, (
+        f"Headline non-linear MAPE outside [17.0, 19.0]%: got {headline:.3f}%\n"
+        f"Per-dataset means: {per_ds['mean'].to_dict()}"
+    )
+
+
+@pytest.mark.headline
+def test_interaction_f1():
+    """TreeMMM interaction-detection F1 ≥ 0.50 on non-linear DGPs (paper Sec 5.4).
+
+    Aggregates TP / FP / FN across the three non-linear DGPs from
+    ``paper/results/interaction_fpr.csv`` and verifies that the resulting
+    micro-averaged F1 is at least 0.50 (paper reports F1 = 0.56).
+    """
+    fpr_path = RESULTS_DIR / "interaction_fpr.csv"
+    assert fpr_path.exists(), f"Missing FPR CSV: {fpr_path}"
+    fpr = pd.read_csv(fpr_path)
+    non_linear = fpr[fpr["dataset"].isin(["pharma", "cpg", "saas"])]
+    assert not non_linear.empty, "No non-linear-DGP rows in interaction_fpr.csv"
+
+    tp = float(non_linear["tp"].sum())
+    fp = float(non_linear["fp"].sum())
+    fn = float(non_linear["fn"].sum())
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+    assert f1 >= 0.50, (
+        f"Interaction F1 below 0.50: precision={precision:.3f}, "
+        f"recall={recall:.3f}, F1={f1:.3f}"
+    )

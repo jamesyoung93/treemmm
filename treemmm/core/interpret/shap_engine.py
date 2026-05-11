@@ -78,7 +78,7 @@ def compute_shap_multifold(
     feature_names = list(X_sets[0].columns)
     link = models[0].link
 
-    for model, X in zip(models, X_sets):
+    for model, X in zip(models, X_sets, strict=False):
         sv = model.get_shap_values(X)
         all_values.append(sv)
         all_expected.append(model.get_expected_value())
