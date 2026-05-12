@@ -4,9 +4,11 @@
 
 *Market Mix Modeling that finds what you didn't think to look for.*
 
-**Package version**: v0.2.1 | **IJF submission**: May 2026 (arXiv preprint pending)
+**Package version**: v0.2.1 | **IJF submission**: May 2026 (arXiv preprint pending) | **R port**: [jamesyoung93/treemmm-r](https://github.com/jamesyoung93/treemmm-r) (docs: [jamesyoung93.github.io/treemmm-r](https://jamesyoung93.github.io/treemmm-r/))
 
 TreeMMM is a pip-installable Python package that uses gradient-boosted trees (LightGBM, XGBoost, CatBoost) paired with SHAP-based attribution to decompose commercial outcomes into promotional lever contributions. Unlike regression-based MMM tools, TreeMMM automatically discovers non-linear response functions, channel interactions, and heterogeneous customer sensitivity — without requiring the analyst to pre-specify functional forms.
+
+> **R users**: a feature-complete R port mirroring this package's v0.2.1 release lives at [jamesyoung93/treemmm-r](https://github.com/jamesyoung93/treemmm-r). It uses `lightgbm` + `predcontrib`-style SHAP, `lme4` for GLMM baselines, and `brms` (optional) for the Bayesian baselines. Both implementations target the same data-generating-process specification — see `SPEC.md` in the R repo. Install with `devtools::install_github("jamesyoung93/treemmm-r")` and `library(treemmm)`.
 
 ### Benchmark headline (v0.2.1, N=5 seeds)
 
