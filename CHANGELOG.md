@@ -5,6 +5,29 @@ All notable changes to TreeMMM are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-06-13
+
+Adds committed budget-increase simulation. Given a fitted TreeMMM model
+and a percent budget change, `reallocate()` plans where the extra touches
+land at the customer-period grain under a per-customer cap, then predicts
+the incremental outcome.
+
+### Added
+
+- **Budget reallocation (`treemmm.mroi.reallocate`).** Grows each target
+  channel's total touches by `budget_delta_pct` and water-fills the
+  increment across panel cells with headroom below a per-customer cap
+  (the `cap_percentile` of observed positive touches, default 95). Cells
+  at or above the cap receive a zero increment and are never reduced, so
+  every per-customer counterfactual stays inside the observed support.
+  Returns a `ReallocationPlan` with the per-row landing plan, the
+  aggregate roll-up, the predicted incremental outcome and lift, and a
+  `ReallocationDiagnostics` record (cap values, at-cap fraction, mid-tier
+  increment share, unallocatable fraction). Target channels come from
+  `channel=`, `channels=`, or are inferred from the model's monotone
+  constraints. See `treemmm/mroi/simulator.py` and
+  `tests/test_budget_reallocation.py`.
+
 ## [0.2.1] - 2026-05-11
 
 First public, arXiv-aligned release. This version pairs with the
