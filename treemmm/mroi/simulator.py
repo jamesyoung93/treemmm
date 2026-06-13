@@ -414,3 +414,274 @@ def simulate_mroi(
         reallocation=reallocation,
         reallocation_lift=reallocation_lift,
     )
+
+
+# ---------------------------------------------------------------------------
+# Budget reallocation: "where the next dollar lands"
+# ---------------------------------------------------------------------------
+#
+# ``reallocate`` answers a different question than the response-curve sweep
+# above.  The sweep traces the aggregate response as a channel's total is
+# scaled up and down, redistributing proportional to current usage.  A budget
+# reallocation instead commits to a fixed increment and asks where it lands
+# under a per-customer cap.  The increment is deployed additively to the cells
+# that have headroom below the cap, leaving already-capped cells untouched (a
+# zero increment, never a forced reduction).  This keeps every per-customer
+# counterfactual inside the observed support that Section 7.5 relies on, and
+# makes the "saturated cells receive nothing" property exact rather than
+# approximate.
+
+
+@dataclass
+class ReallocationDiagnostics:
+    """Cap-binding and landing diagnostics for a budget reallocation.
+
+    Attributes:
+        cap_percentile: Percentile used for the per-customer cap.
+        caps: Per-channel cap value (the percentile of observed positive touches).
+        at_cap_fraction: Fraction of reallocated cells already at or above the
+            cap; these receive a zero increment.
+        top_decile_at_cap_fraction: Within the top decile of current touches,
+            the fraction sitting at the cap.
+        mid_tier_increment_fraction: Fraction of the total increment that lands
+            on the mid-tier (cells with headroom that are not in the top decile).
+        unchanged_fraction: Fraction of cells whose touches do not change.
+        unallocatable_fraction: Fraction of the requested budget that cannot be
+            placed without exceeding the cap (zero unless headroom is exhausted).
+    """
+
+    cap_percentile: float
+    caps: dict[str, float]
+    at_cap_fraction: float
+    top_decile_at_cap_fraction: float
+    mid_tier_increment_fraction: float
+    unchanged_fraction: float
+    unallocatable_fraction: float
+
+
+@dataclass
+class ReallocationPlan:
+    """Result of a cap-bounded budget reallocation.
+
+    Attributes:
+        budget_delta_pct: Requested change in channel budget (25.0 means +25%).
+        channels: Channels the increment was spread across.
+        per_row: Per-observation plan indexed like the input ``X``.  For each
+            channel ``c`` it carries ``c`` (proposed value), ``c__current``,
+            and ``c__increment``.
+        current_aggregate: Per-channel current touch totals.
+        proposed_aggregate: Per-channel proposed touch totals.
+        predicted_outcome_current: Summed model prediction at current touches.
+        predicted_outcome_proposed: Summed model prediction after reallocation.
+        predicted_incremental_outcome: proposed minus current (model scale).
+        predicted_lift_pct: Incremental as a percent of the current prediction.
+        diagnostics: Cap-binding and landing diagnostics.
+    """
+
+    budget_delta_pct: float
+    channels: list[str]
+    per_row: pd.DataFrame
+    current_aggregate: dict[str, float]
+    proposed_aggregate: dict[str, float]
+    predicted_outcome_current: float
+    predicted_outcome_proposed: float
+    predicted_incremental_outcome: float
+    predicted_lift_pct: float
+    diagnostics: ReallocationDiagnostics
+
+
+def _waterfill(
+    current: np.ndarray, cap: float, budget_add: float
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """Distribute ``budget_add`` touches across cells with headroom below ``cap``.
+
+    The increment is split proportional to per-cell headroom (``cap - current``),
+    so cells far below the cap absorb more and cells at the cap absorb nothing.
+    When ``budget_add`` does not exceed total headroom the split respects the cap
+    exactly in a single pass (each share is at most that cell's headroom).  When
+    it does exceed total headroom every cell is filled to the cap and the
+    overflow is reported as unallocatable.
+
+    Returns:
+        (proposed, increment, unallocatable).
+    """
+    current = np.asarray(current, dtype=float)
+    headroom = np.maximum(cap - current, 0.0)
+    total_headroom = float(headroom.sum())
+    increment = np.zeros_like(current)
+
+    if total_headroom <= 0.0 or budget_add <= 0.0:
+        return current.copy(), increment, max(budget_add, 0.0)
+
+    if budget_add <= total_headroom:
+        increment = budget_add * headroom / total_headroom
+        unallocatable = 0.0
+    else:
+        increment = headroom.copy()
+        unallocatable = budget_add - total_headroom
+
+    return current + increment, increment, unallocatable
+
+
+def _infer_channels(model: BaseModel, X: pd.DataFrame) -> list[str] | None:
+    """Best-effort recovery of promo channels from a monotone-constrained model.
+
+    TreeMMM builds its primary model with a ``+1`` monotone constraint on every
+    promo channel and ``0`` elsewhere, so the constrained features are exactly
+    the spendable channels.  Returns ``None`` when the constraint vector and
+    fitted feature names are unavailable (e.g. an unconstrained or baseline
+    model), in which case the caller must name the channels explicitly.
+    """
+    mono = getattr(model, "_monotone_constraints", None)
+    inner = getattr(model, "_model", None)
+    names = getattr(inner, "feature_name_", None) if inner is not None else None
+    if mono is not None and names is not None and len(mono) == len(names):
+        return [
+            n for n, m in zip(names, mono, strict=False)
+            if int(m) == 1 and n in X.columns
+        ]
+    return None
+
+
+def reallocate(
+    model: BaseModel,
+    X: pd.DataFrame,
+    budget_delta_pct: float,
+    cap_percentile: float = 95.0,
+    channel: str | None = None,
+    channels: list[str] | None = None,
+) -> ReallocationPlan:
+    """Plan a cap-bounded budget reallocation and predict its incremental outcome.
+
+    Increases each target channel's total touches by ``budget_delta_pct`` and
+    deploys the increment additively to cells with headroom below the per-customer
+    cap (the ``cap_percentile`` of observed positive touches).  Cells at or above
+    the cap are left unchanged, so every per-customer value stays inside the
+    observed support that Section 7.5 relies on for extrapolation safety.
+
+    Args:
+        model: A fitted TreeMMM model exposing ``predict``.  ``X`` must already
+            be the model-ready feature frame (categoricals as ``category`` dtype).
+        X: Feature frame at the customer-period grain.  Promo channel columns are
+            modified; all other columns are passed through to ``predict``.
+        budget_delta_pct: Percent change in channel budget (25.0 means +25%).
+        cap_percentile: Percentile of observed positive touches used as the
+            per-customer cap (default 95, matching the mROI simulator).
+        channel: Reallocate a single named channel.  Takes precedence over
+            ``channels``.
+        channels: Reallocate across this set of channels, each independently
+            capped and grown by ``budget_delta_pct``.  When both ``channel`` and
+            ``channels`` are ``None`` the channel set is inferred from the model's
+            monotone constraints.
+
+    Returns:
+        ReallocationPlan with the per-row plan, aggregate roll-up, and cap
+        diagnostics.
+
+    Raises:
+        ValueError: If no channels are given and none can be inferred.
+        KeyError: If a requested channel is absent from ``X``.
+    """
+    if channel is not None:
+        target = [channel]
+    elif channels is not None:
+        target = list(channels)
+    else:
+        target = _infer_channels(model, X) or []
+        if not target:
+            raise ValueError(
+                "Could not infer promo channels from the model. Pass `channel=` "
+                "for a single channel or `channels=` for the set to reallocate."
+            )
+
+    missing = [c for c in target if c not in X.columns]
+    if missing:
+        raise KeyError(f"Channels not found in X: {missing}")
+
+    X_proposed = X.copy()
+    caps: dict[str, float] = {}
+    current_aggregate: dict[str, float] = {}
+    proposed_aggregate: dict[str, float] = {}
+    per_row = pd.DataFrame(index=X.index)
+
+    # Pooled diagnostic accumulators (across channels for the multi-channel case).
+    total_cells = 0
+    at_cap_cells = 0
+    top_decile_cells = 0
+    top_decile_at_cap_cells = 0
+    unchanged_cells = 0
+    increment_total = 0.0
+    increment_mid = 0.0
+    budget_total = 0.0
+    unallocatable_total = 0.0
+
+    for col in target:
+        current = X[col].to_numpy(dtype=float)
+        positive = current[current > 0]
+        if positive.size:
+            cap = float(np.percentile(positive, cap_percentile))
+        else:
+            cap = float(current.max()) if current.size else 0.0
+
+        current_agg = float(current.sum())
+        budget_add = current_agg * budget_delta_pct / 100.0
+        proposed, increment, unallocatable = _waterfill(current, cap, budget_add)
+
+        X_proposed[col] = proposed
+        caps[col] = cap
+        current_aggregate[col] = current_agg
+        proposed_aggregate[col] = float(proposed.sum())
+        per_row[col] = proposed
+        per_row[f"{col}__current"] = current
+        per_row[f"{col}__increment"] = increment
+
+        at_cap = current >= cap
+        top_threshold = float(np.percentile(current, 90)) if current.size else 0.0
+        top_decile = current >= top_threshold
+        mid_tier = (~top_decile) & (~at_cap)
+
+        total_cells += current.size
+        at_cap_cells += int(at_cap.sum())
+        top_decile_cells += int(top_decile.sum())
+        top_decile_at_cap_cells += int((top_decile & at_cap).sum())
+        unchanged_cells += int((increment <= 1e-9).sum())
+        increment_total += float(increment.sum())
+        increment_mid += float(increment[mid_tier].sum())
+        budget_total += budget_add
+        unallocatable_total += unallocatable
+
+    predicted_current = model.predict(X)
+    predicted_proposed = model.predict(X_proposed)
+    out_current = float(np.sum(predicted_current))
+    out_proposed = float(np.sum(predicted_proposed))
+    incremental = out_proposed - out_current
+    lift_pct = incremental / out_current * 100.0 if out_current != 0 else 0.0
+
+    diagnostics = ReallocationDiagnostics(
+        cap_percentile=cap_percentile,
+        caps=caps,
+        at_cap_fraction=at_cap_cells / total_cells if total_cells else 0.0,
+        top_decile_at_cap_fraction=(
+            top_decile_at_cap_cells / top_decile_cells if top_decile_cells else 0.0
+        ),
+        mid_tier_increment_fraction=(
+            increment_mid / increment_total if increment_total > 0 else 0.0
+        ),
+        unchanged_fraction=unchanged_cells / total_cells if total_cells else 0.0,
+        unallocatable_fraction=(
+            unallocatable_total / budget_total if budget_total > 0 else 0.0
+        ),
+    )
+
+    return ReallocationPlan(
+        budget_delta_pct=budget_delta_pct,
+        channels=target,
+        per_row=per_row,
+        current_aggregate=current_aggregate,
+        proposed_aggregate=proposed_aggregate,
+        predicted_outcome_current=out_current,
+        predicted_outcome_proposed=out_proposed,
+        predicted_incremental_outcome=incremental,
+        predicted_lift_pct=lift_pct,
+        diagnostics=diagnostics,
+    )
