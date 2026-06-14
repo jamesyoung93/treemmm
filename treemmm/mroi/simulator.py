@@ -20,6 +20,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -684,4 +685,158 @@ def reallocate(
         predicted_incremental_outcome=incremental,
         predicted_lift_pct=lift_pct,
         diagnostics=diagnostics,
+    )
+
+
+@dataclass
+class ReallocationCurve:
+    """Budget decision curve: cap-bounded reallocation swept across budget levels.
+
+    Pairs the per-level decision table a planner reads top to bottom with the
+    full per-customer landing plan at each level, so the aggregate "how much
+    lift per budget step" view and the operational "who gets the next touch"
+    view come from a single sweep.
+
+    Attributes:
+        cap_percentile: Percentile used for the per-customer cap at every level.
+        channels: Channels the increment was spread across.
+        budget_deltas: Swept budget levels (percent increases), sorted ascending.
+        table: One row per level with ``budget_delta_pct``, ``added_touches``
+            (the increment that actually lands under the cap),
+            ``predicted_incremental_outcome``, ``predicted_lift_pct``,
+            ``marginal_return_per_touch`` (incremental outcome per landed touch
+            at that level), ``step_marginal_return`` (the next-step return,
+            change in outcome over change in touches against the level below),
+            ``mid_tier_increment_fraction``, ``at_cap_fraction``, and
+            ``unallocatable_fraction``.
+        plans: Full ``ReallocationPlan`` per level, keyed by budget delta, so the
+            per-customer call list at any level needs no re-run.
+        max_allocatable_delta: Largest swept level whose full requested increment
+            still lands under the cap (unallocatable fraction at or below
+            ``tol``).  ``None`` if even the smallest level overflows the cap.
+            Past this point extra budget cannot be placed inside observed support.
+    """
+
+    cap_percentile: float
+    channels: list[str]
+    budget_deltas: list[float]
+    table: pd.DataFrame
+    plans: dict[float, ReallocationPlan]
+    max_allocatable_delta: float | None
+
+
+def reallocate_curve(
+    model: BaseModel,
+    X: pd.DataFrame,
+    budget_deltas: Sequence[float],
+    cap_percentile: float = 95.0,
+    channel: str | None = None,
+    channels: list[str] | None = None,
+    tol: float = 1e-6,
+) -> ReallocationCurve:
+    """Sweep :func:`reallocate` across budget levels into a decision curve.
+
+    Runs the cap-bounded reallocation at every level in ``budget_deltas`` and
+    assembles a table a planner can read straight down: how much of the requested
+    budget actually lands, the predicted incremental outcome and lift, the
+    marginal return per landed touch, and where the per-customer cap starts to
+    bind (the level past which extra budget cannot be placed inside observed
+    support).  The full per-customer landing plan at every level is retained in
+    ``plans`` so an operational call list can be exported for the chosen level.
+
+    The marginal columns make diminishing returns explicit: as the requested
+    budget grows past the available headroom, ``added_touches`` plateaus,
+    ``unallocatable_fraction`` rises, and ``step_marginal_return`` falls.  Every
+    figure is in model-outcome and touch units; layer in a cost or revenue per
+    touch downstream to read them as ROI.
+
+    Args:
+        model: A fitted TreeMMM model exposing ``predict``.
+        X: Model-ready feature frame at the customer-period grain.
+        budget_deltas: Budget levels to sweep, as percent increases (e.g.
+            ``[10, 25, 50, 100]``).  De-duplicated and sorted ascending before
+            the sweep.
+        cap_percentile: Per-customer cap percentile, held fixed across levels
+            (default 95).
+        channel: Reallocate a single named channel (takes precedence).
+        channels: Channel set to reallocate; inferred from the model's monotone
+            constraints when both ``channel`` and ``channels`` are ``None``.
+        tol: Unallocatable-fraction tolerance defining ``max_allocatable_delta``.
+
+    Returns:
+        ReallocationCurve with the decision ``table``, the per-level ``plans``,
+        and the largest fully-allocatable level.
+
+    Raises:
+        ValueError: If ``budget_deltas`` is empty, or no channels are given and
+            none can be inferred.
+        KeyError: If a requested channel is absent from ``X``.
+    """
+    deltas = sorted({float(d) for d in budget_deltas})
+    if not deltas:
+        raise ValueError("budget_deltas must contain at least one level.")
+
+    plans: dict[float, ReallocationPlan] = {}
+    rows: list[dict] = []
+    prev_inc: float | None = None
+    prev_touches: float | None = None
+    for delta in deltas:
+        plan = reallocate(
+            model, X, budget_delta_pct=delta, cap_percentile=cap_percentile,
+            channel=channel, channels=channels,
+        )
+        plans[delta] = plan
+        placed = float(
+            sum(plan.proposed_aggregate.values())
+            - sum(plan.current_aggregate.values())
+        )
+        inc = plan.predicted_incremental_outcome
+        marginal = inc / placed if placed > 0 else float("nan")
+        if prev_inc is None:
+            step_marginal = marginal
+        else:
+            d_touch = placed - prev_touches
+            step_marginal = (
+                (inc - prev_inc) / d_touch if d_touch > 0 else float("nan")
+            )
+        rows.append({
+            "budget_delta_pct": delta,
+            "added_touches": placed,
+            "predicted_incremental_outcome": inc,
+            "predicted_lift_pct": plan.predicted_lift_pct,
+            "marginal_return_per_touch": marginal,
+            "step_marginal_return": step_marginal,
+            "mid_tier_increment_fraction": (
+                plan.diagnostics.mid_tier_increment_fraction
+            ),
+            "at_cap_fraction": plan.diagnostics.at_cap_fraction,
+            "unallocatable_fraction": plan.diagnostics.unallocatable_fraction,
+        })
+        prev_inc = inc
+        prev_touches = placed
+
+    table = pd.DataFrame(rows, columns=[
+        "budget_delta_pct",
+        "added_touches",
+        "predicted_incremental_outcome",
+        "predicted_lift_pct",
+        "marginal_return_per_touch",
+        "step_marginal_return",
+        "mid_tier_increment_fraction",
+        "at_cap_fraction",
+        "unallocatable_fraction",
+    ])
+
+    allocatable = [
+        d for d in deltas if plans[d].diagnostics.unallocatable_fraction <= tol
+    ]
+    max_allocatable_delta = max(allocatable) if allocatable else None
+
+    return ReallocationCurve(
+        cap_percentile=cap_percentile,
+        channels=plans[deltas[0]].channels,
+        budget_deltas=deltas,
+        table=table,
+        plans=plans,
+        max_allocatable_delta=max_allocatable_delta,
     )

@@ -5,6 +5,27 @@ All notable changes to TreeMMM are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-06-14
+
+Adds a budget decision curve over `reallocate()`. Sweeps the cap-bounded
+reallocation across budget levels into a single planner table and keeps the
+per-customer landing plan at every level, so the aggregate "lift per budget
+step" view and the operational "who gets the next touch" view come from one
+pass.
+
+### Added
+
+- **Reallocation curve (`treemmm.mroi.reallocate_curve`).** Runs
+  `reallocate()` at each level in `budget_deltas` and returns a
+  `ReallocationCurve`: a per-level decision table (added touches, predicted
+  incremental outcome and lift, the marginal return per landed touch, and the
+  next-step return against the level below), the full `ReallocationPlan`
+  retained per level so a per-customer call list needs no re-run, and
+  `max_allocatable_delta`, the largest swept level whose full increment still
+  lands inside the observed support. Figures are in model-outcome and touch
+  units; a cost or revenue per touch is layered in downstream. See
+  `treemmm/mroi/simulator.py` and `tests/test_budget_reallocation.py`.
+
 ## [0.3.0] - 2026-06-13
 
 Adds committed budget-increase simulation. Given a fitted TreeMMM model
