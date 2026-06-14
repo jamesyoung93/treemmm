@@ -20,7 +20,12 @@ from treemmm.demo.datasets.pharma_brand import (
     pharma_run_config,
 )
 from treemmm.demo.dgp_evaluator import compute_expected_outcome
-from treemmm.mroi import ReallocationPlan, reallocate
+from treemmm.mroi import (
+    ReallocationCurve,
+    ReallocationPlan,
+    reallocate,
+    reallocate_curve,
+)
 from treemmm.mroi.simulator import _waterfill
 
 
@@ -205,6 +210,139 @@ def test_multichannel_reallocation_pools_diagnostics():
         assert f"{ch}__increment" in plan.per_row.columns
     assert 0.0 <= plan.diagnostics.mid_tier_increment_fraction <= 1.0
     assert plan.predicted_incremental_outcome > 0
+
+
+# --------------------------------------------------------------------------- #
+# reallocate_curve(): decision curve across budget levels
+# --------------------------------------------------------------------------- #
+
+def test_curve_table_has_one_row_per_sorted_unique_level():
+    df = _toy_frame()
+    model = _LinearStub({"rep_visits": 2.0}, list(df.columns))
+    # unsorted, with a duplicate -> deduped and sorted ascending
+    curve = reallocate_curve(
+        model, df, budget_deltas=[25.0, 10.0, 25.0, 50.0], channel="rep_visits"
+    )
+
+    assert isinstance(curve, ReallocationCurve)
+    assert curve.budget_deltas == [10.0, 25.0, 50.0]
+    assert list(curve.table["budget_delta_pct"]) == [10.0, 25.0, 50.0]
+    assert len(curve.table) == 3
+    assert set(curve.plans) == {10.0, 25.0, 50.0}
+
+
+def test_curve_touches_and_outcome_are_monotone_non_decreasing():
+    df = _toy_frame()
+    model = _LinearStub({"rep_visits": 2.0, "samples": 1.0}, list(df.columns))
+    curve = reallocate_curve(
+        model, df, budget_deltas=[10.0, 25.0, 50.0, 100.0], channel="rep_visits"
+    )
+
+    touches = curve.table["added_touches"].to_numpy()
+    inc = curve.table["predicted_incremental_outcome"].to_numpy()
+    assert np.all(np.diff(touches) >= -1e-9)
+    assert np.all(np.diff(inc) >= -1e-9)
+    assert np.all(curve.table["predicted_lift_pct"].to_numpy() >= -1e-9)
+
+
+def test_curve_marginal_return_equals_linear_weight():
+    """For a single linear channel with no cap binding the incremental outcome
+    is weight x landed touches, so both marginal columns collapse to the weight."""
+    df = _toy_frame()
+    weight = 2.5
+    model = _LinearStub({"rep_visits": weight}, list(df.columns))
+    # small levels stay well within headroom -> fully allocatable
+    curve = reallocate_curve(
+        model, df, budget_deltas=[5.0, 10.0, 20.0], channel="rep_visits"
+    )
+
+    assert np.all(curve.table["unallocatable_fraction"].to_numpy() < 1e-9)
+    assert np.all(np.diff(curve.table["added_touches"].to_numpy()) > 0)
+    for val in curve.table["marginal_return_per_touch"]:
+        assert val == pytest.approx(weight)
+    # step return (level vs the one below) is also the weight for a linear model
+    for val in curve.table["step_marginal_return"]:
+        assert val == pytest.approx(weight)
+
+
+def test_curve_unallocatable_fraction_is_monotone_non_decreasing():
+    df = _toy_frame()
+    model = _LinearStub({"rep_visits": 2.0}, list(df.columns))
+    curve = reallocate_curve(
+        model, df, budget_deltas=[10.0, 50.0, 200.0, 1000.0], channel="rep_visits"
+    )
+    frac = curve.table["unallocatable_fraction"].to_numpy()
+    assert np.all(np.diff(frac) >= -1e-9)
+    # the huge level cannot fully land inside the cap
+    assert frac[-1] > 0.0
+
+
+def test_curve_max_allocatable_delta_matches_diagnostics():
+    df = _toy_frame()
+    model = _LinearStub({"rep_visits": 2.0}, list(df.columns))
+    curve = reallocate_curve(
+        model, df, budget_deltas=[10.0, 25.0, 50.0, 1000.0], channel="rep_visits"
+    )
+
+    allocatable = [
+        d for d in curve.budget_deltas
+        if curve.plans[d].diagnostics.unallocatable_fraction <= 1e-6
+    ]
+    expected = max(allocatable) if allocatable else None
+    assert curve.max_allocatable_delta == expected
+    # bounded headroom guarantees the 1000% level overflows the cap
+    assert curve.max_allocatable_delta is not None
+    assert curve.max_allocatable_delta < 1000.0
+
+
+def test_curve_frontier_is_none_when_no_headroom():
+    # every cell already sits at the cap -> zero headroom -> nothing lands
+    df = pd.DataFrame(
+        {"rep_visits": np.full(50, 5.0), "control": np.zeros(50)},
+        index=[f"row{i:02d}" for i in range(50)],
+    )
+    model = _LinearStub({"rep_visits": 1.0}, list(df.columns))
+    curve = reallocate_curve(
+        model, df, budget_deltas=[10.0, 50.0], channel="rep_visits"
+    )
+    assert curve.max_allocatable_delta is None
+    assert np.all(curve.table["unallocatable_fraction"].to_numpy() > 0.0)
+    assert np.all(curve.table["added_touches"].to_numpy() == pytest.approx(0.0))
+
+
+def test_curve_retains_per_level_per_customer_plans():
+    df = _toy_frame()
+    model = _LinearStub({"rep_visits": 2.0, "samples": 1.0}, list(df.columns))
+    curve = reallocate_curve(
+        model, df, budget_deltas=[10.0, 50.0], channels=["rep_visits", "samples"]
+    )
+
+    for delta in (10.0, 50.0):
+        plan = curve.plans[delta]
+        assert isinstance(plan, ReallocationPlan)
+        assert plan.budget_delta_pct == delta
+        assert list(plan.per_row.index) == list(df.index)
+        assert "rep_visits__increment" in plan.per_row.columns
+    assert curve.channels == curve.plans[10.0].channels
+
+
+def test_curve_empty_deltas_raises():
+    df = _toy_frame()
+    model = _LinearStub({"rep_visits": 2.0}, list(df.columns))
+    with pytest.raises(ValueError, match="at least one level"):
+        reallocate_curve(model, df, budget_deltas=[], channel="rep_visits")
+
+
+def test_curve_single_level_is_valid():
+    df = _toy_frame()
+    model = _LinearStub({"rep_visits": 2.0}, list(df.columns))
+    curve = reallocate_curve(model, df, budget_deltas=[25.0], channel="rep_visits")
+
+    assert curve.budget_deltas == [25.0]
+    assert len(curve.table) == 1
+    row = curve.table.iloc[0]
+    # first row has no level below it, so the step return is the level's own marginal
+    assert row["step_marginal_return"] == pytest.approx(row["marginal_return_per_touch"])
 
 
 # --------------------------------------------------------------------------- #
