@@ -89,26 +89,26 @@ print(attribution)
 print(f"R2={result.model_result.r2:.3f}  WMAPE={result.model_result.wmape:.3f}")
 ```
 
-Configuring by hand instead of using a `*_run_config` helper. This is equivalent to `pharma_run_config(dataset)`, spelled out so you can see how columns are mapped — `dataset.columns` is a dict of the generated panel's column names:
+Under the hood, `pharma_run_config(dataset)` just builds a `RunConfig` from the generated column names — `dataset.columns` is a dict mapping each role to its column. The snippet below spells that out. It is illustrative only: it binds `config_manual` (not `config`), so the rest of the walkthrough keeps using the `config` from the helper above. If you build a config by hand for your own data, make sure it carries **every** field — in particular `categorical_vars`, which downstream steps (mROI, baselines) rely on to match the trained model's schema.
 
 ```python
 from treemmm.core.config import ColumnSpec, RunConfig
 
 cols = dataset.columns
-config = RunConfig(
+config_manual = RunConfig(             # identical to pharma_run_config(dataset)
     columns=ColumnSpec(
         customer_id=cols["customer_id"],   # "customer_id"
         time_col=cols["time_col"],         # "period"
         outcome_col=cols["outcome_col"],   # "outcome"
         promo_vars=cols["promo_vars"],     # the six promo channels
         control_vars=cols["control_vars"],
-        categorical_vars=cols["categorical_vars"],  # ["specialty"] — needed downstream (mROI, baselines)
+        categorical_vars=cols["categorical_vars"],  # ["specialty"]
     ),
     objective="auto",   # auto-detects Gaussian / Poisson / Tweedie / Gamma
 )
 ```
 
-For your own data, pass the literal column names from your CSV instead — e.g. `customer_id="hcp_id", time_col="month", outcome_col="new_patients"` with your own promo and control lists. (Those names are illustrative; they are not columns in the synthetic demo dataset.)
+For your own data, pass the literal column names from your CSV instead — e.g. `customer_id="hcp_id", time_col="month", outcome_col="new_patients"` with your own promo, control, and categorical lists. (Those names are illustrative; they are not columns in the synthetic demo dataset.)
 
 ### 3. Discover channel interactions
 
