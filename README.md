@@ -102,6 +102,7 @@ config = RunConfig(
         outcome_col=cols["outcome_col"],   # "outcome"
         promo_vars=cols["promo_vars"],     # the six promo channels
         control_vars=cols["control_vars"],
+        categorical_vars=cols["categorical_vars"],  # ["specialty"] — needed downstream (mROI, baselines)
     ),
     objective="auto",   # auto-detects Gaussian / Poisson / Tweedie / Gamma
 )
