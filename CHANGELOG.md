@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Reproducible budget-reallocation script and notebook walkthroughs now call
+  both `reallocate` and `reallocate_curve` on the seeded pharma demo.
+
 ### Changed
 
 - `RunConfig.adstock_decay` now applies geometric panel adstock before
@@ -16,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   coordinate search instead of gradient-based SLSQP. The heuristic conserves
   aggregate touch units exactly under row caps and does not supply a channel
   cost model.
+- The pharma quickstart now states the outputs it actually produces, pins its
+  random seed, and prints portably on Windows legacy console encodings.
 
 ### Removed
 
