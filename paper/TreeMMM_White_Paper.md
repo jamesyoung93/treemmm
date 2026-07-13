@@ -433,7 +433,7 @@ We add a 500 HCP × 24 month NegBin panel (`pharma_adstock`) where the effective
 
 TreeMMM-with-adstock recovers attribution **−11.3pp better** than TreeMMM-without on the carryover DGP. TreeMMM-Adstock also **beats GLMM-Adstock** (21.3% vs. 28.4%): the tree's advantage over regression is preserved once both are given the correct adstock decay.
 
-**Honest caveats**: (a) the analyst must know the right decay (we set 0.5 to match the plant; learning decay jointly via Optuna is implemented in spirit but not benchmarked here); (b) the DGP is smaller (500 × 24) than the headline benchmarks (3,000 × 36 months, 3 years); (c) only geometric adstock is tested.
+**Honest caveats**: (a) the analyst must supply the decay (we set 0.5 to match the plant; the pipeline does not tune decay); (b) the DGP is smaller (500 × 24) than the headline benchmarks (3,000 × 36 months, 3 years); (c) only geometric adstock is tested.
 
 #### 4.7.2 Adstock-Planted Headline DGPs (Full Scale: 3,000 × 36 months, 3 years)
 

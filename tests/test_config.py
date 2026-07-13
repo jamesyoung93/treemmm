@@ -1,6 +1,9 @@
 """Tests for RunConfig and ColumnSpec validation."""
 
+import pytest
+
 from treemmm.core.config import (
+    CarryoverMethod,
     ColumnSpec,
     Objective,
     RunConfig,
@@ -116,3 +119,51 @@ def test_temporal_alignment_default():
     )
     assert rc.get_alignment("rep_visits") == TemporalAlignment.LAGGED
     assert rc.get_alignment("digital") == TemporalAlignment.CONTEMPORANEOUS
+
+
+@pytest.mark.parametrize("decay", [-0.1, 1.0, float("nan"), True, "invalid"])
+def test_adstock_decay_validation_rejects_invalid_values(decay):
+    cs = ColumnSpec(
+        customer_id="hcp_id",
+        time_col="month",
+        outcome_col="nps",
+        promo_vars=["rep_visits"],
+    )
+    errors = RunConfig(columns=cs, adstock_decay=decay).validate()
+    assert any("adstock_decay" in error for error in errors)
+
+
+def test_adstock_decay_validation_rejects_unknown_channel():
+    cs = ColumnSpec(
+        customer_id="hcp_id",
+        time_col="month",
+        outcome_col="nps",
+        promo_vars=["rep_visits"],
+    )
+    errors = RunConfig(columns=cs, adstock_decay={"digital": 0.5}).validate()
+    assert any("keys not in promo_vars" in error for error in errors)
+
+
+def test_adstock_decay_validation_rejects_lag_carryover():
+    cs = ColumnSpec(
+        customer_id="hcp_id",
+        time_col="month",
+        outcome_col="nps",
+        promo_vars=["rep_visits"],
+    )
+    errors = RunConfig(
+        columns=cs,
+        carryover_method=CarryoverMethod.LAG,
+        adstock_decay=0.5,
+    ).validate()
+    assert any("requires carryover_method" in error for error in errors)
+
+
+def test_adstock_decay_validation_accepts_partial_channel_map():
+    cs = ColumnSpec(
+        customer_id="hcp_id",
+        time_col="month",
+        outcome_col="nps",
+        promo_vars=["rep_visits", "digital"],
+    )
+    assert RunConfig(columns=cs, adstock_decay={"rep_visits": 0.5}).validate() == []

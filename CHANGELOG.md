@@ -5,6 +5,21 @@ All notable changes to TreeMMM are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- `RunConfig.adstock_decay` now applies geometric panel adstock before
+  reverse-causality diagnostics and model fitting, with configuration validation
+  for decay ranges, channel names, and incompatible carryover modes.
+
+### Removed
+
+- **Deprecation/removal note:** `CarryoverMethod.WEIBULL` was a nonfunctional
+  placeholder and has been removed. Configurations that referenced `"weibull"`
+  must use the implemented `"geometric"` carryover until a Weibull kernel is
+  implemented and tested.
+
 ## [0.3.1] - 2026-06-14
 
 Adds a budget decision curve over `reallocate()`. Sweeps the cap-bounded
