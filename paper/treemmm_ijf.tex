@@ -26,6 +26,9 @@
 
 \newcolumntype{L}{>{\raggedright\arraybackslash}X}
 \newcolumntype{C}{>{\centering\arraybackslash}X}
+\setlength{\emergencystretch}{3em}
+\Urlmuskip=0mu plus 2mu\relax
+\renewcommand{\UrlFont}{\fontsize{9}{11}\selectfont\ttfamily}
 
 %% hyperref settings compatible with elsarticle
 \hypersetup{
@@ -183,6 +186,7 @@ approaches \cite{meridian2024google,pymcmarketing2023}
 \centering
 \caption{Open-source MMM tools and their primary limitations.}
 \label{tab:existing_tools}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{@{}lll@{}}
 \toprule
 Tool & Method & Key Limitation \\
@@ -192,7 +196,8 @@ Tool & Method & Key Limitation \\
 \textbf{PyMC-Marketing}      & Bayesian via NUTS                & Manual saturation/adstock spec \\
 \textbf{Orbit} (Uber)        & Bayesian structural time-series  & Not purpose-built for MMM \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 Recent academic work has explored neural architectures for MMM: NNN
@@ -467,6 +472,7 @@ entities $\times$ 36 periods.
 \centering
 \caption{Synthetic dataset specifications.}
 \label{tab:datasets}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{@{}lllllll@{}}
 \toprule
 Dataset & $N$ & Distribution & Channels & Non-lin & Interactions & HCS \\
@@ -476,7 +482,8 @@ CPG     & 3K$\times$36 & Tweedie ($p{=}1.5$) & 5 & sqrt, log, lin & 1 & 3 seg \\
 SaaS    & 3K$\times$36 & ZI-Gamma (ZI=10\%)  & 5 & sqrt, log      & 2 & 2 seg \\
 Linear  & 3K$\times$36 & Gaussian             & 3 & None           & None & None \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 The pharma DGP functional form (illustrative) is:
@@ -756,6 +763,7 @@ PyMC-Mktg = PyMC-Marketing. Linear SE not meaningful (near-zero MAPE).}
          SaaS, Gaussian for linear; no random effects).
          Single-seed (seed = 42).}
 \label{tab:attr2b}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{@{}lrrrrr@{}}
 \toprule
 Dataset & TreeMMM & GLMMDist-N & GLMMDist-O & GLMM-N (ref) & Gap closed$^\dagger$ \\
@@ -767,7 +775,8 @@ Linear (Gaussian)& 0.3\%  & 0.1\%  & 0.1\%  & 0.1\%  & $0.0$ pp \\
 \midrule
 \textbf{Non-linear avg} & \textbf{18.3\%} & \textbf{25.2\%} & \textbf{18.7\%} & 24.0\% & \textbf{$-1.2$ pp} \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \medskip
 \small$^\dagger$ Gap closed = GLMM-Naive MAPE $-$ GLMMDist-Naive MAPE.
 Positive $=$ proper likelihood improves; negative $=$ proper likelihood is
@@ -840,6 +849,7 @@ SaaS   & (non-planted, 19 pairs) & --- & --- & 4 pairs (sdr/content/event/csm co
 \caption{Per-dataset precision, recall, F1 for interaction detection
          (threshold: 3\% SHAP importance, $|\rho_s| > 0.10$).}
 \label{tab:interaction_summary}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{@{}lrrrrrrrr@{}}
 \toprule
 Dataset & Planted & Candidates & TP & FP & FN & Precision & Recall & F1 \\
@@ -851,7 +861,8 @@ SaaS       & 2 & 21 & 2 & 4 & 0 & 0.33 & 1.00 & 0.50 \\
 \textbf{Aggregate} & \textbf{6} & \textbf{70} & \textbf{5} & \textbf{7} & \textbf{1} &
   \textbf{0.42} & \textbf{0.83} & \textbf{0.56} \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 The one missed interaction (\texttt{peer\_programs} $\times$ \texttt{rep\_visits},
@@ -991,6 +1002,7 @@ reports PyMC-Hier-Naive mROI at 500 $\times$ 24 scale.
 \centering
 \caption{mROI benchmarking summary (TreeMMM vs.\ GLMM-Naive at 3,000$\times$36).}
 \label{tab:mroi_main}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{@{}lllll@{}}
 \toprule
 Dataset & Model & mROI Rank $\rho$ & Direction Acc. & Curve Pearson $r$ (mean) \\
@@ -1003,7 +1015,8 @@ SaaS    & TreeMMM    & 1.00 & 100\% & 0.94 \\
 SaaS    & GLMM-Naive & 1.00 & 100\% & --- \\
 Linear  & Both       & 1.00 & 100\% & 1.00 \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \begin{table}[ht]
@@ -1011,6 +1024,7 @@ Linear  & Both       & 1.00 & 100\% & 1.00 \\
 \caption{PyMC-Hier-Naive vs.\ GLMM-Naive mROI at 500$\times$24
          (not directly comparable to \Cref{tab:mroi_main} at 3,000$\times$36).}
 \label{tab:mroi_pymc}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{@{}lllllll@{}}
 \toprule
 Dataset & Model & mROI Rank $\rho$ & Direction Acc. & Pred.\ Lift & True Lift \\
@@ -1023,7 +1037,8 @@ SaaS   & PyMC-Hier-Naive & 1.00 & 100\% & $-3$\%  & $-1$\%  \\
 SaaS   & GLMM-Naive      & 1.00 & 100\% & $-4$\%  & $-1$\%  \\
 Linear & Both            & 1.00 & 100\% & 0\%     & 0\%     \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 All three TreeMMM mROI benchmarks pass pre-registered thresholds: ranking
@@ -1065,15 +1080,16 @@ hierarchy: channel ranking and direction, budget-neutral cross-tactic
 reallocation, committed-increase HCP-period landing, and the open future gap of
 choosing both net-new tactic mix and row-level landing jointly.
 
-\textbf{Method.} The \texttt{treemmm.mroi.reallocate(model, X,
-budget\_delta\_pct, cap\_percentile, channel)} routine raises a channel's
+\textbf{Method.} The
+\path{treemmm.mroi.reallocate(model,X,budget_delta_pct,cap_percentile,channel)}
+routine raises a channel's
 touches by a committed percentage and distributes the increase across
 HCP-period cells by an additive headroom rule. Each cell receives an increment
 proportional to its headroom, defined as the gap between its current touch
 count and a per-HCP cap; cells already at or above the cap receive nothing and
 are never reduced. The cap is the 95th percentile of observed positive touches
 by default, the same extrapolation-safety bound used by the mROI simulator
-(\Cref{sec:methods:mroi}). A real deployment should still run multivariate
+(\ref{sec:methods:mroi}). A real deployment should still run multivariate
 coverage diagnostics around the proposed cells. We read the predicted model
 counterfactual as the change in the model's summed prediction between current
 and proposed inputs, and compare it to the DGP-reference response obtained by
@@ -1099,6 +1115,7 @@ average over many splits and converge toward the DGP reference curve.
 \caption{Committed rep-visit budget increase on the pharma DGP
          (95th-percentile cap, $N{=}5$ seeds, mean $\pm$ SE).}
 \label{tab:budget_landing}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{@{}lllll@{}}
 \toprule
 Budget increase & Predicted lift & DGP-reference lift & Magnitude error & Direction correct \\
@@ -1108,7 +1125,8 @@ Budget increase & Predicted lift & DGP-reference lift & Magnitude error & Direct
 +50\%  & +38.2\%~$\pm$~2.1\% & +41.4\%~$\pm$~0.3\% & 11.9\%~$\pm$~3.3\% & 5/5 \\
 +100\% & +69.5\%~$\pm$~0.8\% & +73.0\%~$\pm$~0.9\% & 6.0\%~$\pm$~0.7\%  & 5/5 \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \textbf{Where the increment lands.} \Cref{fig:budget_reallocation} Panel B
@@ -1196,6 +1214,7 @@ preprocessing. Results are in \Cref{tab:adstock}.
 \caption{Adstock DGP (500$\times$24): does adstock-aware preprocessing recover
          the planted carryover? True \texttt{rep\_visits} share = 0.42.}
 \label{tab:adstock}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{@{}llllll@{}}
 \toprule
 Model & Attr.\ MAPE & Rank $\rho$ & $R^2$ & \texttt{rep\_visits} share \\
@@ -1205,7 +1224,8 @@ TreeMMM-Naive (no adstock)       & 32.6\% & 0.94 & 0.38 & 0.29 ($-13$ pp) \\
 GLMM-Naive (no adstock)         & 61.5\% & 0.94 & $-14567$ & 0.27 ($-15$ pp) \\
 GLMM-Adstock (0.50)             & 28.4\% & 1.00 & $-2844$  & 0.35 ($-7$ pp) \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 TreeMMM-Adstock recovers attribution 11.3 pp better than TreeMMM-Naive on the
@@ -1232,6 +1252,7 @@ computational cost.
          N = 200$\times$18, seed = 42.
          Results from \texttt{paper/results/benchmark\_adstock\_headline.csv}.}
 \label{tab:adstock_headline}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{@{}lllll@{}}
 \toprule
 Dataset & Model & No-adstock MAPE & Adstock-aware MAPE & $\Delta$ (pp) \\
@@ -1257,7 +1278,8 @@ saas   & \textbf{PyMC-Hier-Naive}  & \textbf{50.9} & 137.8 & $-86.9$\\
 saas   & PyMC-Hier-Oracle      & 70.3          & 91.2  & $-20.9$ \\
 saas   & PyMC-Marketing        & 262.8         & 271.0 & $-8.3$  \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \medskip
 \small $\Delta =$ No-adstock MAPE $-$ Adstock-aware MAPE; negative $=$ preprocessing hurts.
 \end{table}
@@ -1288,6 +1310,7 @@ in \Cref{tab:geo_results}.
 \centering
 \caption{Geo-panel DGP channel specifications.}
 \label{tab:geo_dgp}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{@{}lllr@{}}
 \toprule
 Channel & Adstock decay & Saturation form & Effect weight \\
@@ -1296,7 +1319,8 @@ Channel & Adstock decay & Saturation form & Effect weight \\
 \texttt{digital\_spend}& 0.30 & Logistic ($k{=}0.08$, $x_0{=}\$20$k)   & 1.4 \\
 \texttt{trade\_promo}  & 0.00 & Linear (no saturation)                   & 0.6 \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \begin{sidewaystable}[p]
@@ -1734,8 +1758,11 @@ the manuscript.
 %% Bibliography
 %%==========================================================================
 
+\begingroup
+\sloppy
 \bibliographystyle{elsarticle-num}
 \bibliography{refs}
+\endgroup
 
 %%==========================================================================
 %% Appendix A: Exploratory Neural MMM Comparison
@@ -1852,6 +1879,7 @@ an objective; the user can override.
 \centering
 \caption{Outcome distributions and corresponding TreeMMM objectives.}
 \label{tab:objectives}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{@{}lll@{}}
 \toprule
 Distribution & Objective & When to Use \\
@@ -1861,7 +1889,8 @@ Poisson  & Log-link     & Non-negative counts (Rx, orders, NPS)         \\
 Tweedie  & Log-link     & Zero-inflated continuous (revenue with stockouts) \\
 Gamma    & Log-link     & Strictly positive continuous (per-transaction revenue) \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \subsection{Link-Function-Aware Attribution Decomposition}
@@ -1972,7 +2001,7 @@ logistic saturation transforms. Operates on aggregate time-series (one row per
 period); our panel data is collapsed to 36 rows. We use default priors,
 \texttt{GeometricAdstock(l\_max=4)}, \texttt{LogisticSaturation()}, and the
 NumPyro sampler (500 draws, 500 tuning, 2 chains). Attribution shares are
-extracted via \texttt{compute\_channel\_contribution\_original\_scale()}.
+extracted via \path{compute_channel_contribution_original_scale()}.
 
 The three PyMC variants differ on several key axes summarized in
 \Cref{tab:pymc_variants}. A few axes deserve flagging: PyMC-Marketing's
@@ -1986,6 +2015,7 @@ data.
 \small
 \caption{PyMC variants used in the benchmark and their key differences.}
 \label{tab:pymc_variants}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{@{}llll@{}}
 \toprule
 Axis & PyMC-Hier-Naive & PyMC-Hier-Oracle & PyMC-Marketing \\
@@ -2001,7 +2031,8 @@ Draws/tune/chains & 1000/1000/4         & 1000/1000/4               & 500/500/2 
 Wall-clock (3K$\times$36) & 90--105 s  & 90--105 s                 & 25--55 s \\
 Non-linear MAPE  & 22.7\% $\pm$ 0.3\%   & 18.1\% $\pm$ 0.3\%        & 75.1\% $\pm$ 5.5\% \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \end{document}
