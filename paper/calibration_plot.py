@@ -365,20 +365,13 @@ def generate_figure_12(calib_df: pd.DataFrame) -> None:
 
     fig, axes = plt.subplots(
         nrows=4, ncols=3,
-        figsize=(13, 15.5),
+        figsize=(8.5, 12),
         constrained_layout=False,
     )
     # Leave breathing room above the top row for both the figure title
     # and the per-column model name headers.
-    fig.subplots_adjust(top=0.91, hspace=0.45, wspace=0.30,
+    fig.subplots_adjust(top=0.96, hspace=0.45, wspace=0.30,
                         left=0.10, right=0.97, bottom=0.06)
-    fig.suptitle(
-        "Figure 12. Predicted vs Actual Decile Calibration\n"
-        "(each point = one prediction decile bin; diagonal = perfect calibration)",
-        fontsize=13,
-        fontweight="bold",
-        y=0.985,
-    )
 
     for row_idx, ds_name in enumerate(datasets):
         for col_idx, model_key in enumerate(models):
@@ -389,8 +382,8 @@ def generate_figure_12(calib_df: pd.DataFrame) -> None:
 
             if sub.empty:
                 ax.text(0.5, 0.5, "No data", ha="center", va="center",
-                        transform=ax.transAxes, fontsize=9, color="gray")
-                ax.set_title(f"{DATASET_LABELS[ds_name]}\n{model_key}", fontsize=9)
+                        transform=ax.transAxes, fontsize=10, color="gray")
+                ax.set_title(f"{DATASET_LABELS[ds_name]}\n{model_key}", fontsize=10)
                 continue
 
             x = sub["predicted_mean"].values
@@ -424,24 +417,24 @@ def generate_figure_12(calib_df: pd.DataFrame) -> None:
             if col_idx == 0:
                 ax.set_ylabel(
                     DATASET_LABELS[ds_name] + "\n\nActual mean",
-                    fontsize=8.5,
+                    fontsize=10,
                 )
             else:
-                ax.set_ylabel("Actual mean", fontsize=8)
+                ax.set_ylabel("Actual mean", fontsize=9.5)
 
             if row_idx == 3:
-                ax.set_xlabel("Predicted mean", fontsize=8.5)
+                ax.set_xlabel("Predicted mean", fontsize=10)
             else:
-                ax.set_xlabel("Predicted mean", fontsize=8)
+                ax.set_xlabel("Predicted mean", fontsize=9.5)
 
-            ax.tick_params(labelsize=7)
+            ax.tick_params(labelsize=9.5)
 
             # Annotate number of bins
             n_bins = len(sub)
             ax.annotate(
                 f"n={n_bins} bins",
                 xy=(0.05, 0.92), xycoords="axes fraction",
-                fontsize=6.5, color="gray",
+                fontsize=9.5, color="gray",
             )
 
     # Legend under the figure
@@ -458,7 +451,7 @@ def generate_figure_12(calib_df: pd.DataFrame) -> None:
         handles=legend_elements,
         loc="lower center",
         ncol=4,
-        fontsize=9,
+        fontsize=10,
         frameon=True,
         bbox_to_anchor=(0.5, -0.03),
     )

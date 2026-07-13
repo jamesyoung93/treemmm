@@ -60,12 +60,12 @@ COLOR_CAPLINE = "#D32F2F"  # red - cap line
 
 plt.rcParams.update(
     {
-        "font.size": 12,
+        "font.size": 11.5,
         "axes.labelsize": 13,
         "axes.titlesize": 13,
-        "xtick.labelsize": 11,
-        "ytick.labelsize": 11,
-        "legend.fontsize": 10,
+        "xtick.labelsize": 11.5,
+        "ytick.labelsize": 11.5,
+        "legend.fontsize": 11.5,
         "figure.dpi": 300,
         "savefig.dpi": 300,
         "savefig.bbox": "tight",
@@ -134,18 +134,20 @@ def _panel_a(ax: plt.Axes, per_seed: pd.DataFrame) -> None:
         "operating point\n125% budget",
         xy=(100.0 + OPERATING_DELTA, op_y),
         xytext=(100.0 + OPERATING_DELTA + 12, op_y - 14),
-        fontsize=9, color="gray",
+        fontsize=11.5, color="gray",
         arrowprops=dict(arrowstyle="->", color="gray", lw=1.0),
     )
     ax.annotate(
         "marginal return:\npositive, diminishing",
         xy=(0.97, 0.05), xycoords="axes fraction",
-        fontsize=9, color="#555555", ha="right", va="bottom",
+        fontsize=11.5, color="#555555", ha="right", va="bottom",
         bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#cccccc", alpha=0.8),
     )
 
-    ax.set_title("A. Aggregate response to a committed rep-visit increase",
-                 fontweight="bold")
+    ax.set_title(
+        "A. Aggregate response to a committed\nrep-visit increase",
+        fontweight="bold",
+    )
     ax.set_xlabel("Rep-visit budget (% of current)")
     ax.set_ylabel("Outcome lift (%)")
     ax.legend(loc="upper left", framealpha=0.85)
@@ -186,12 +188,15 @@ def _panel_b(ax: plt.Axes, snap: pd.DataFrame) -> None:
         ax.annotate(
             "saturated:\nno increment",
             xy=(N_BINS - 1, cap), xytext=(first_cap - 1, cap + cap * 0.25),
-            fontsize=9, color="#666666", ha="right",
+            fontsize=11.5, color="#666666", ha="right",
             arrowprops=dict(arrowstyle="->", color="#999999", lw=1.0),
         )
 
-    ax.set_title("B. Where the committed increment lands (+25%, cap95)", fontweight="bold")
-    ax.set_xlabel("HCP-period cells, sorted by current touch intensity")
+    ax.set_title(
+        "B. Where the committed increment lands\n(+25%, cap95)",
+        fontweight="bold",
+    )
+    ax.set_xlabel("HCP-period cells, sorted by\ncurrent touch intensity")
     ax.set_ylabel("Rep visits per HCP-period")
     ax.set_xticks([])
     ax.legend(loc="upper left", framealpha=0.85)
@@ -212,20 +217,9 @@ def generate_fig14() -> None:
     per_seed = pd.read_csv(PER_SEED_CSV)
     snap = pd.read_csv(PERHCP_CSV)
 
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5.6))
+    fig, axes = plt.subplots(1, 2, figsize=(10, 6.4))
     _panel_a(axes[0], per_seed)
     _panel_b(axes[1], snap)
-
-    n_seeds = per_seed["seed"].nunique()
-    fig.suptitle(
-        "Figure 13. Cap-bounded HCP-level budget landing on the pharma DGP. "
-        f"Panel A: aggregate lift vs budget level, mean +/- SE over {n_seeds} "
-        "seeds; bands are seed dispersion, not a calibrated confidence interval. "
-        "Panel B: the +25% increment fills headroom below the per-customer cap "
-        "and avoids cells already saturated (gray). The tactic is already chosen; "
-        "this is a committed-increase landing simulation, not a net-new optimizer.",
-        fontsize=9.5, y=1.02, ha="center",
-    )
 
     plt.tight_layout()
     _FIGURES_DIR.mkdir(exist_ok=True)

@@ -46,12 +46,12 @@ COLOR_BORDER = "#9E9E9E"
 
 plt.rcParams.update(
     {
-        "font.size": 12,
-        "axes.labelsize": 12,
-        "axes.titlesize": 13,
-        "xtick.labelsize": 10,
-        "ytick.labelsize": 10,
-        "legend.fontsize": 10,
+        "font.size": 13.5,
+        "axes.labelsize": 14,
+        "axes.titlesize": 15,
+        "xtick.labelsize": 13.5,
+        "ytick.labelsize": 13.5,
+        "legend.fontsize": 13.5,
         "figure.dpi": 300,
         "savefig.dpi": 300,
         "savefig.bbox": "tight",
@@ -79,8 +79,8 @@ def _box(
     linestyle: str = "-",
     title_color: str = COLOR_TEXT,
     body_color: str = COLOR_TEXT,
-    title_size: float = 11.5,
-    body_size: float = 9.2,
+    title_size: float = 15,
+    body_size: float = 13.5,
     zorder: int = 2,
 ) -> None:
     """Draw a labeled rectangular box in axes coordinates."""
@@ -109,7 +109,7 @@ def _box(
     )
     ax.text(
         x + width / 2,
-        y + height / 2 - 0.015,
+        y + height / 2 - 0.025,
         body,
         ha="center",
         va="center",
@@ -195,11 +195,12 @@ def _mini_hcp_landing(ax: plt.Axes, origin: tuple[float, float]) -> None:
         zorder=7,
     )
     ax.text(
-        x0 + n_cells * 0.012 + 0.008,
+        x0 + n_cells * 0.012 - 0.004,
         cap_y,
         "cap",
         color=COLOR_CAPLINE,
-        fontsize=8.4,
+        fontsize=13.5,
+        ha="right",
         va="center",
         zorder=7,
     )
@@ -208,7 +209,7 @@ def _mini_hcp_landing(ax: plt.Axes, origin: tuple[float, float]) -> None:
 def _panel_landing_box(ax: plt.Axes, xy: tuple[float, float]) -> None:
     """Draw the emphasized Section 4.5 panel-level landing box."""
     x, y = xy
-    width, height = 0.25, 0.18
+    width, height = 0.25, 0.23
     ax.add_patch(
         Rectangle(
             (x, y),
@@ -226,7 +227,7 @@ def _panel_landing_box(ax: plt.Axes, xy: tuple[float, float]) -> None:
         "TreeMMM panel view",
         ha="center",
         va="top",
-        fontsize=10.2,
+        fontsize=15,
         fontweight="bold",
         color=COLOR_TEXT,
         zorder=7,
@@ -234,30 +235,20 @@ def _panel_landing_box(ax: plt.Axes, xy: tuple[float, float]) -> None:
     ax.text(
         x + width / 2,
         y + height - 0.064,
-        "cap-bounded headroom rule",
+        "cap-bounded\nheadroom rule",
         ha="center",
         va="top",
-        fontsize=8.4,
+        fontsize=13.5,
         color=COLOR_TEXT,
         linespacing=1.12,
         zorder=7,
     )
-    _mini_hcp_landing(ax, (x + 0.028, y + 0.036))
-    ax.text(
-        x + width / 2,
-        y + 0.012,
-        "blue current  amber added  gray capped",
-        ha="center",
-        va="bottom",
-        fontsize=7.7,
-        color="#455A64",
-        zorder=8,
-    )
+    _mini_hcp_landing(ax, (x + 0.028, y + 0.025))
 
 
 def generate_fig15() -> None:
     """Build the budget decision framework figure and write PNG + PDF."""
-    fig, ax = plt.subplots(figsize=(15, 9.2))
+    fig, ax = plt.subplots(figsize=(12, 9.5))
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.axis("off")
@@ -279,8 +270,8 @@ def generate_fig15() -> None:
             body,
             facecolor=COLOR_LIGHT_GRAY,
             edgecolor=COLOR_BORDER,
-            title_size=10.8,
-            body_size=8.8,
+            title_size=15,
+            body_size=13.5,
         )
     for start_x in (0.23, 0.47, 0.71):
         _arrow(ax, (start_x, 0.865), (start_x + 0.055, 0.865), color=COLOR_BORDER)
@@ -291,7 +282,7 @@ def generate_fig15() -> None:
         "Nested decision levels for TreeMMM budget action planning",
         ha="center",
         va="center",
-        fontsize=16,
+        fontsize=18,
         fontweight="bold",
         color=COLOR_TEXT,
     )
@@ -301,75 +292,89 @@ def generate_fig15() -> None:
         "One panel response surface supports attribution, mROI, capped landing, and bounded future optimizers.",
         ha="center",
         va="center",
-        fontsize=10,
+        fontsize=13.5,
         color="#546E7A",
     )
 
     # Lane labels and bodies.
     lane_specs = [
         (
-            0.59,
+            0.58,
+            0.20,
             "Section 4.4",
-            "Budget-neutral optimizer",
-            "Fixed total spend.\nSLSQP shifts dollars\nacross tactics.",
-            "Uses the response\nsurface, but does not\nreturn a landing plan.",
-            "Direction useful;\nmagnitude needs\nexperimental calibration.",
+            "Budget-neutral\noptimizer",
+            "Fixed total spend.\nSLSQP shifts\ndollars across\ntactics.",
+            "Uses the response\nsurface, but does\nnot return a\nlanding plan.",
+            "Direction useful;\nmagnitude needs\nexperimental\ncalibration.",
             COLOR_LIGHT_BLUE,
             COLOR_MODEL,
             "-",
         ),
         (
-            0.335,
+            0.315,
+            0.23,
             "Section 4.5",
-            "Cap-bounded HCP\nlanding simulation",
-            "Brand commits +X% to\none tactic, or +X%\nto each chosen tactic.",
+            "Cap-bounded\nHCP landing\nsimulation",
+            "Brand commits\n+X% to one tactic,\nor +X% to each\nchosen tactic.",
             "",
-            "+25% rep visits:\npred +27.8%, DGP +20.7%.\nJoint +25%: pred +80.7%,\nDGP +59.6%.",
+            "+25% rep visits:\npred +27.8%,\nDGP +20.7%.\nJoint +25%:\npred +80.7%,\nDGP +59.6%.",
             COLOR_LIGHT_AMBER,
             COLOR_INCREMENT,
             "-",
         ),
         (
-            0.08,
+            0.07,
+            0.20,
             "Future work",
-            "Net-new increment\nand plan optimizer",
-            "Extra budget is known,\nbut tactic choice is open.",
-            "Would choose tactic mix\nand HCP-period landing\njointly under caps.",
-            "Not built here.\nPlan version adds routing,\ncapacity, and cadence.",
+            "Net-new\nincrement and\nplan optimizer",
+            "Extra budget is\nknown, but tactic\nchoice is open.",
+            "Would choose tactic\nmix and HCP-period\nlanding jointly\nunder caps.",
+            "Not built here.\nPlan version adds\nrouting, capacity,\nand cadence.",
             "white",
             COLOR_CAPPED,
             (0, (4, 3)),
         ),
     ]
 
-    for y, label, title, budget_text, hcp_text, outcome_text, fill, accent, style in lane_specs:
+    for (
+        y,
+        height,
+        label,
+        title,
+        budget_text,
+        hcp_text,
+        outcome_text,
+        fill,
+        accent,
+        style,
+    ) in lane_specs:
         _box(
             ax,
             (0.035, y),
             0.17,
-            0.18,
+            height,
             label,
             title,
             facecolor=fill,
             edgecolor=accent,
             linewidth=1.6,
             linestyle=style,
-            title_size=10.2,
-            body_size=9.3,
+            title_size=14,
+            body_size=13.5,
         )
         _box(
             ax,
             (0.245, y),
             0.19,
-            0.18,
+            height,
             "Budget question",
             budget_text,
             facecolor=fill,
             edgecolor=accent,
             linewidth=1.4,
             linestyle=style,
-            title_size=10.0,
-            body_size=8.8,
+            title_size=14,
+            body_size=13.5,
         )
         if label == "Section 4.5":
             _panel_landing_box(ax, (0.475, y))
@@ -378,65 +383,54 @@ def generate_fig15() -> None:
                 ax,
                 (0.475, y),
                 0.25,
-                0.18,
+                height,
                 "Panel-level step",
                 hcp_text,
                 facecolor=fill,
                 edgecolor=accent,
                 linewidth=1.4,
                 linestyle=style,
-                title_size=10.0,
-                body_size=8.8,
+                title_size=14,
+                body_size=13.5,
             )
         _box(
             ax,
             (0.765, y),
             0.205,
-            0.18,
+            height,
             "Readout",
             outcome_text,
             facecolor=fill,
             edgecolor=accent,
             linewidth=1.4,
             linestyle=style,
-            title_size=10.0,
-            body_size=8.6,
+            title_size=14,
+            body_size=13.5,
         )
         for x_start, x_end in ((0.205, 0.245), (0.435, 0.475), (0.725, 0.765)):
             _arrow(
                 ax,
-                (x_start, y + 0.09),
-                (x_end, y + 0.09),
+                (x_start, y + height / 2),
+                (x_end, y + height / 2),
                 color=accent if label != "Open gap" else COLOR_BORDER,
                 linestyle=style,
                 linewidth=1.5,
             )
 
     # Compact legend, kept within the figure.
-    legend_y = 0.02
+    legend_y = 0.018
     legend_items = [
-        (0.20, COLOR_MODEL, "current or TreeMMM predicted"),
-        (0.41, COLOR_INCREMENT, "committed increment"),
-        (0.60, COLOR_CAPPED, "capped or not built"),
-        (0.77, COLOR_TRUTH, "DGP reference for synthetic QC"),
+        (0.17, legend_y + 0.025, COLOR_MODEL, "current or TreeMMM predicted"),
+        (0.56, legend_y + 0.025, COLOR_INCREMENT, "committed increment"),
+        (0.17, legend_y, COLOR_CAPPED, "capped or not built"),
+        (0.56, legend_y, COLOR_TRUTH, "DGP reference for synthetic QC"),
     ]
-    for x, color, text in legend_items:
+    for x, y, color, text in legend_items:
         ax.add_patch(
-            Rectangle((x, legend_y), 0.018, 0.018, facecolor=color, edgecolor="none")
+            Rectangle((x, y), 0.018, 0.018, facecolor=color, edgecolor="none")
         )
-        ax.text(x + 0.024, legend_y + 0.009, text, ha="left", va="center",
-                fontsize=8.4, color=COLOR_TEXT)
-
-    fig.suptitle(
-        "Figure 12. Budget action planning should stay nested: attribution to "
-        "tactic choice, HCP-period landing, and outcome readout. Section 4.4 "
-        "optimizes a fixed budget across tactics; Section 4.5 simulates a "
-        "committed increase and shows where it lands under caps. Net-new "
-        "increment and plan-level optimizers are future work.",
-        fontsize=9.3,
-        y=1.01,
-        ha="center",
-    )
+        ax.text(x + 0.024, y + 0.009, text, ha="left", va="center",
+                fontsize=13.5, color=COLOR_TEXT)
 
     FIGURES_DIR.mkdir(exist_ok=True)
     png_path = FIGURES_DIR / "fig15_budget_decision_framework.png"
