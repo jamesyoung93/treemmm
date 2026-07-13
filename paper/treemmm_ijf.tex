@@ -99,7 +99,8 @@
 Marketing Mix Modeling (MMM) often stops at channel attribution or aggregate
 response curves, leaving analysts to translate model output into action plans
 by hand. We introduce TreeMMM, an open-source panel MMM package that uses
-gradient-boosted trees (LightGBM/XGBoost/CatBoost) and SHAP attribution to
+gradient-boosted trees (LightGBM/XGBoost/CatBoost)
+\cite{ke2017lightgbm,chen2016xgboost,prokhorenkova2018catboost} and SHAP attribution to
 connect four decision layers from the same fitted response surface:
 channel-share attribution, automatic interaction discovery, mROI ranking, and
 cap-bounded HCP-period budget landing. SHAP TreeExplainer provides exact
@@ -167,13 +168,14 @@ Market Mix Modeling (MMM) seeks to attribute observed commercial outcomes
 force, digital marketing, trade promotions) while controlling for
 non-promotional factors (seasonality, competition, macroeconomics). The stakes
 are high: MMM outputs directly drive multi-million-dollar budget allocation
-decisions across the marketing portfolio.
+decisions across the marketing portfolio \cite{little1979aggregate}.
 
 \subsection{Existing Tools}
 \label{sec:intro:tools}
 
 The open-source MMM ecosystem is dominated by Bayesian and ridge regression
-approaches (\Cref{tab:existing_tools}).
+approaches \cite{meridian2024google,pymcmarketing2023}
+(\Cref{tab:existing_tools}).
 
 \begin{table}[ht]
 \centering
@@ -221,7 +223,8 @@ TreeMMM addresses four specific limitations shared by existing tools:
 \item \textbf{Distribution-aware modeling}: Robyn and Meridian default to
   Gaussian loss. TreeMMM auto-detects the outcome distribution (Poisson,
   Tweedie, Gamma, Gaussian) and selects the appropriate objective function.
-\item \textbf{Link-function-aware attribution}: SHAP TreeExplainer computes
+\item \textbf{Link-function-aware attribution}: SHAP TreeExplainer
+  \cite{lundberg2017unified} computes
   values in margin space. For log-link models, na\"{i}ve exponentiation of
   SHAP values violates additivity. TreeMMM's decomposer handles this correctly.
 \item \textbf{Actionable budget landing}: Aggregate MMM can rank channels but
@@ -238,7 +241,8 @@ marketing-mix modeling was forged in a specific data regime: aggregate weekly
 time-series with around 150 observations, ten or more collinear channels, and
 stakeholder demand for posterior intervals. In that regime the framing is
 correct. Frequentist OLS struggles with weakly identified adstock and
-saturation parameters, priors regularize estimation and allow transfer of prior
+saturation parameters \cite{jin2017bayesian,chan2017challenges}, priors
+regularize estimation and allow transfer of prior
 experimental knowledge, and hierarchical structure benefits from partial
 pooling. These advantages are real because of the data scarcity and aggregation
 that defines the classical MMM problem.
@@ -494,6 +498,7 @@ y_{i,t}
 where $f_k$ is a channel-specific response function (log, sqrt, or linear) and
 $\beta_{i,k}$ is drawn from a segment-specific multivariate normal
 (heterogeneous customer sensitivity). The pharma DGP includes targeting bias
+\cite{manchanda2004response}
 (reps visit high-potential HCPs more) and channel correlation, making it the
 hardest dataset. The linear dataset is the honesty test: a GLMM should match
 or beat TreeMMM when the true relationship is linear.
@@ -1180,7 +1185,8 @@ priors within the 4$\times$ range do not flip the channel ordering.
 
 None of the four headline DGPs plant promotional carryover. We add a separate
 \texttt{pharma\_adstock} DGP (500 HCP $\times$ 24 months, NegBin, geometric
-adstock decay = 0.50 on \texttt{rep\_visits}) to benchmark adstock-aware
+adstock decay \cite{broadbent1979oneway} = 0.50 on
+\texttt{rep\_visits}) to benchmark adstock-aware
 preprocessing. Results are in \Cref{tab:adstock}.
 
 \begin{table}[ht]
@@ -1958,8 +1964,8 @@ interaction terms added as fixed effects
 ($\beta_\text{inter} \sim \mathcal{N}(0, 0.5)$). The Bayesian counterpart of
 GLMM-Oracle and the apples-to-apples panel Bayesian competitor to TreeMMM.
 
-\textbf{PyMC-Marketing} (v0.19, \texttt{pymc-labs/pymc-marketing}): The leading
-open-source Bayesian MMM, implementing NUTS sampling with geometric adstock and
+\textbf{PyMC-Marketing} (v0.19.4, \texttt{pymc-labs/pymc-marketing}): The leading
+open-source Bayesian MMM \cite{pymcmarketing2023}, implementing NUTS sampling with geometric adstock and
 logistic saturation transforms. Operates on aggregate time-series (one row per
 period); our panel data is collapsed to 36 rows. We use default priors,
 \texttt{GeometricAdstock(l\_max=4)}, \texttt{LogisticSaturation()}, and the
