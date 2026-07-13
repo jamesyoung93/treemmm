@@ -186,7 +186,7 @@ To construct the GLMM baselines directly (for example to wire your own compariso
 
 ### 6. mROI response curves
 
-`simulate_mroi` sweeps each channel and returns bootstrapped response curves plus a constrained optimal allocation. Per-customer levels are held inside the observed support (capped at an observed percentile), so the curves never extrapolate individual customers past what was seen.
+`simulate_mroi` sweeps each channel and returns bootstrapped response curves plus a deterministic, discrete budget-neutral reallocation heuristic. Pairwise coordinate moves conserve aggregate touch units under per-customer caps. There is no channel cost model, so convert inputs to common cost units before comparing channels with different per-touch costs. Per-customer levels are held inside the observed support (capped at an observed percentile), so the curves never extrapolate individual customers past what was seen.
 
 ```python
 from treemmm.mroi import simulate_mroi

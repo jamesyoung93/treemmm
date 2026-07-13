@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `RunConfig.adstock_decay` now applies geometric panel adstock before
   reverse-causality diagnostics and model fitting, with configuration validation
   for decay ranges, channel names, and incompatible carryover modes.
+- Budget-neutral mROI reallocation now uses a deterministic discrete pairwise
+  coordinate search instead of gradient-based SLSQP. The heuristic conserves
+  aggregate touch units exactly under row caps and does not supply a channel
+  cost model.
 
 ### Removed
 
