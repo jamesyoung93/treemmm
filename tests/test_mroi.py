@@ -2,14 +2,17 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from treemmm.core.config import ColumnSpec, Objective, RunConfig
 from treemmm.core.models.lightgbm_model import LightGBMModel
 from treemmm.mroi.simulator import (
     MROIResult,
     VariableConstraints,
+    _allocate_channel_aggregate,
     _compute_constraints,
     _estimate_response_curve,
+    _optimize_reallocation,
     _simulate_response_point,
     simulate_mroi,
 )
@@ -209,3 +212,69 @@ class TestSimulateMROI:
         )
         # The point should exist and be valid
         assert pt.predicted_outcome > 0
+
+
+class _StepSurfaceModel:
+    """Piecewise-constant response with a non-starting budget optimum."""
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        x1 = X["x1"].to_numpy(dtype=float)
+        x2 = X["x2"].to_numpy(dtype=float)
+        return 10.0 + 100.0 * (x1 >= 12.0) + 5.0 * (x2 >= 9.0)
+
+
+def test_discrete_optimizer_moves_on_step_surface_and_conserves_budget():
+    X = pd.DataFrame({"x1": [10.0], "x2": [10.0]})
+    constraints = [
+        VariableConstraints("x1", 0.0, 15.0, 10.0),
+        VariableConstraints("x2", 0.0, 15.0, 10.0),
+    ]
+
+    allocation, lift = _optimize_reallocation(
+        _StepSurfaceModel(),
+        X,
+        ["x1", "x2"],
+        constraints,
+    )
+
+    assert allocation != {"x1": 10.0, "x2": 10.0}
+    assert allocation["x1"] >= 12.0
+    assert sum(allocation.values()) == pytest.approx(20.0, abs=1e-10)
+    assert lift > 0.0
+
+    repeated, repeated_lift = _optimize_reallocation(
+        _StepSurfaceModel(),
+        X,
+        ["x1", "x2"],
+        constraints,
+    )
+    assert repeated == allocation
+    assert repeated_lift == pytest.approx(lift)
+
+
+def test_channel_aggregate_allocator_respects_caps_and_exact_total():
+    current = np.array([0.0, 2.0, 5.0])
+    constraint = VariableConstraints("x1", 0.0, 4.0, float(current.sum()))
+
+    proposed = _allocate_channel_aggregate(current, 9.0, constraint)
+
+    np.testing.assert_array_less(proposed, np.maximum(current, 4.0) + 1e-12)
+    assert proposed[2] == pytest.approx(current[2])
+    assert float(proposed.sum()) == pytest.approx(9.0, abs=1e-10)
+
+
+def test_discrete_optimizer_rejects_infeasible_total_budget():
+    X = pd.DataFrame({"x1": [10.0], "x2": [10.0]})
+    constraints = [
+        VariableConstraints("x1", 0.0, 15.0, 10.0),
+        VariableConstraints("x2", 0.0, 15.0, 10.0),
+    ]
+
+    with pytest.raises(ValueError, match="infeasible"):
+        _optimize_reallocation(
+            _StepSurfaceModel(),
+            X,
+            ["x1", "x2"],
+            constraints,
+            total_budget=31.0,
+        )

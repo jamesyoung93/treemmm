@@ -16,25 +16,33 @@ On three non-linear panel datasets (Pharma/NegBin, CPG/Tweedie, SaaS/ZI-Gamma), 
 
 ## Installation
 
+> [!WARNING]
+> The PyPI release is currently outdated and does not include the v0.3.1
+> capabilities documented below. Until the next Author-managed PyPI upload,
+> install the pinned v0.3.1 Git tag directly from GitHub.
+
 ```bash
 # Core package (LightGBM + SHAP)
-pip install treemmm
+pip install "treemmm @ git+https://github.com/jamesyoung93/treemmm@v0.3.1"
 
 # With XGBoost support
-pip install treemmm[xgboost]
+pip install "treemmm[xgboost] @ git+https://github.com/jamesyoung93/treemmm@v0.3.1"
 
 # With PowerPoint reporting
-pip install treemmm[reporting]
+pip install "treemmm[reporting] @ git+https://github.com/jamesyoung93/treemmm@v0.3.1"
 
 # With Jupyter widgets
-pip install treemmm[ui]
+pip install "treemmm[ui] @ git+https://github.com/jamesyoung93/treemmm@v0.3.1"
 
 # Everything
-pip install treemmm[all]
+pip install "treemmm[all] @ git+https://github.com/jamesyoung93/treemmm@v0.3.1"
 
-# Development
-pip install treemmm[dev]
+# Test and lint dependencies
+pip install "treemmm[dev] @ git+https://github.com/jamesyoung93/treemmm@v0.3.1"
 ```
+
+For an editable development checkout, clone the repository and run
+`pip install -e ".[dev]"` from its root.
 
 ## Capability tour
 
@@ -178,7 +186,7 @@ To construct the GLMM baselines directly (for example to wire your own compariso
 
 ### 6. mROI response curves
 
-`simulate_mroi` sweeps each channel and returns bootstrapped response curves plus a constrained optimal allocation. Per-customer levels are held inside the observed support (capped at an observed percentile), so the curves never extrapolate individual customers past what was seen.
+`simulate_mroi` sweeps each channel and returns bootstrapped response curves plus a deterministic, discrete budget-neutral reallocation heuristic. Pairwise coordinate moves conserve aggregate touch units under per-customer caps. There is no channel cost model, so convert inputs to common cost units before comparing channels with different per-touch costs. Per-customer levels are held inside the observed support (capped at an observed percentile), so the curves never extrapolate individual customers past what was seen.
 
 ```python
 from treemmm.mroi import simulate_mroi

@@ -25,7 +25,6 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
-from scipy import optimize
 
 from treemmm.core.config import RunConfig
 from treemmm.core.models.base import BaseModel
@@ -119,7 +118,9 @@ class MROIResult:
 
         if self.reallocation_lift > 0:
             lines.append("")
-            lines.append(f"Predicted lift from optimal reallocation: +{self.reallocation_lift:.1f}%")
+            lines.append(
+                f"Predicted lift from optimal reallocation: +{self.reallocation_lift:.1f}%"
+            )
 
         return "\n".join(lines)
 
@@ -145,7 +146,11 @@ def _compute_constraints(
     constraints = []
     for var in promo_vars:
         values = df[var].values
-        per_cust_max = float(np.percentile(values[values > 0], percentile)) if (values > 0).any() else 1.0
+        per_cust_max = (
+            float(np.percentile(values[values > 0], percentile))
+            if (values > 0).any()
+            else 1.0
+        )
         current_agg = float(values.sum())
 
         constraints.append(VariableConstraints(
@@ -284,64 +289,297 @@ def _estimate_response_curve(
     )
 
 
+def _allocate_channel_aggregate(
+    current: np.ndarray,
+    target_aggregate: float,
+    constraint: VariableConstraints,
+) -> np.ndarray:
+    """Allocate an exact channel total without increasing a row past its cap.
+
+    Increases are spread in proportion to remaining headroom. Observations that
+    already exceed the percentile cap are grandfathered at their observed value
+    and receive no increase. Decreases are spread over values above the declared
+    per-row minimum. The returned values sum to ``target_aggregate`` within
+    floating-point precision.
+    """
+    current = np.asarray(current, dtype=float)
+    if current.ndim != 1:
+        raise ValueError("current channel values must be one-dimensional")
+
+    row_lower = np.full_like(current, constraint.per_customer_min, dtype=float)
+    row_upper = np.maximum(current, constraint.per_customer_max)
+    if np.any(current < row_lower - 1e-12):
+        raise ValueError(
+            f"Current values for {constraint.variable!r} fall below the configured minimum"
+        )
+
+    lower_total = float(row_lower.sum())
+    current_total = float(current.sum())
+    upper_total = float(row_upper.sum())
+    tolerance = 1e-9 * max(1.0, abs(target_aggregate), abs(current_total))
+    if target_aggregate < lower_total - tolerance or target_aggregate > upper_total + tolerance:
+        raise ValueError(
+            f"Target aggregate for {constraint.variable!r} must be in "
+            f"[{lower_total:.6g}, {upper_total:.6g}], got {target_aggregate:.6g}"
+        )
+    target_aggregate = float(np.clip(target_aggregate, lower_total, upper_total))
+
+    if abs(target_aggregate - current_total) <= tolerance:
+        return current.copy()
+
+    if target_aggregate > current_total:
+        capacity = row_upper - current
+        change = target_aggregate - current_total
+    else:
+        capacity = current - row_lower
+        change = current_total - target_aggregate
+
+    total_capacity = float(capacity.sum())
+    if total_capacity <= 0.0 or change > total_capacity + tolerance:
+        raise ValueError(
+            f"Target aggregate for {constraint.variable!r} is infeasible under row bounds"
+        )
+
+    adjustment = change * capacity / total_capacity
+    proposed = current + adjustment if target_aggregate > current_total else current - adjustment
+
+    # Close the tiny arithmetic residual on the row with the most room so the
+    # aggregate budget is conserved, not merely bounded by an inequality.
+    residual = target_aggregate - float(proposed.sum())
+    room = row_upper - proposed if residual > 0.0 else proposed - row_lower
+    if abs(residual) > 0.0 and room.size:
+        idx = int(np.argmax(room))
+        proposed[idx] += residual
+
+    if not np.isclose(proposed.sum(), target_aggregate, rtol=0.0, atol=tolerance):
+        raise RuntimeError(
+            f"Failed to conserve aggregate touches for {constraint.variable!r}"
+        )
+    if np.any(proposed < row_lower - tolerance) or np.any(proposed > row_upper + tolerance):
+        raise RuntimeError(f"Row bounds violated for {constraint.variable!r}")
+    return proposed
+
+
+def _project_allocation_to_budget(
+    current: np.ndarray,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    total_budget: float,
+) -> np.ndarray:
+    """Project channel totals to an exact feasible aggregate-touch budget."""
+    tolerance = 1e-9 * max(1.0, abs(total_budget))
+    if (
+        total_budget < float(lower.sum()) - tolerance
+        or total_budget > float(upper.sum()) + tolerance
+    ):
+        raise ValueError(
+            "total_budget is infeasible under the channel aggregate bounds: "
+            f"required [{lower.sum():.6g}, {upper.sum():.6g}], got {total_budget:.6g}"
+        )
+
+    allocation = np.clip(current.astype(float, copy=True), lower, upper)
+    delta = total_budget - float(allocation.sum())
+    if delta > tolerance:
+        room = upper - allocation
+        allocation += delta * room / float(room.sum())
+    elif delta < -tolerance:
+        room = allocation - lower
+        allocation -= (-delta) * room / float(room.sum())
+
+    residual = total_budget - float(allocation.sum())
+    if abs(residual) > 0.0:
+        room = upper - allocation if residual > 0.0 else allocation - lower
+        allocation[int(np.argmax(room))] += residual
+    if not np.isclose(allocation.sum(), total_budget, rtol=0.0, atol=tolerance):
+        raise RuntimeError("Failed to construct an exactly budget-neutral allocation")
+    return allocation
+
+
+def _pairwise_transfer_candidates(
+    allocation: np.ndarray,
+    donor: int,
+    receiver: int,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    grid_points: int,
+) -> list[float]:
+    """Return deterministic grid transfers that preserve the total budget."""
+    max_transfer = min(
+        allocation[donor] - lower[donor],
+        upper[receiver] - allocation[receiver],
+    )
+    if max_transfer <= 1e-12:
+        return []
+
+    transfers = {float(max_transfer)}
+    receiver_grid = np.linspace(lower[receiver], upper[receiver], grid_points)
+    donor_grid = np.linspace(lower[donor], upper[donor], grid_points)
+    transfers.update(
+        float(level - allocation[receiver])
+        for level in receiver_grid
+        if allocation[receiver] < level <= allocation[receiver] + max_transfer + 1e-12
+    )
+    transfers.update(
+        float(allocation[donor] - level)
+        for level in donor_grid
+        if allocation[donor] - max_transfer - 1e-12 <= level < allocation[donor]
+    )
+    return sorted(transfer for transfer in transfers if 1e-12 < transfer <= max_transfer + 1e-12)
+
+
 def _optimize_reallocation(
     model: BaseModel,
     X_base: pd.DataFrame,
     promo_vars: list[str],
     constraints: list[VariableConstraints],
     total_budget: float | None = None,
+    grid_points: int = 16,
+    max_rounds: int = 25,
 ) -> tuple[dict[str, float], float]:
-    """Find the optimal reallocation of total engagement budget.
+    """Find a better budget-neutral allocation on a discrete touch grid.
 
-    Uses scipy.optimize.minimize with per-variable and total constraints.
-    The decision variable is the aggregate level per variable.
+    This is deterministic pairwise coordinate ascent. Each channel is bounded
+    between zero and at most 150% of its current aggregate (further limited by
+    per-row caps). At every round, the method evaluates grid-aligned transfers
+    from one channel to another, accepts the best strict improvement, and stops
+    when no pairwise move improves the fitted model's mean prediction.
+
+    ``total_budget`` is an aggregate-touch total, not money. The heuristic has
+    no channel cost model and implicitly treats one unit of every channel as
+    exchangeable. Analysts must convert features to common cost units upstream
+    when channel unit costs differ.
+
+    Rows already above a percentile cap retain their observed value but are
+    never increased. All candidate allocations conserve ``total_budget`` as an
+    equality and are realized exactly at the row level.
+
+    Args:
+        model: Fitted model exposing ``predict``.
+        X_base: Model-ready feature frame at the customer-period grain.
+        promo_vars: Promotional columns whose aggregate touches may move.
+        constraints: Per-channel row bounds and current aggregates.
+        total_budget: Aggregate touch total to conserve. Defaults to the current
+            total across ``promo_vars``.
+        grid_points: Points in each channel's 0--150% coordinate grid.
+        max_rounds: Maximum accepted pairwise coordinate moves.
 
     Returns:
-        (optimal_allocation, predicted_lift_pct)
-    """
-    constraint_map = {c.variable: c for c in constraints}
+        ``(allocation, predicted_lift_pct)`` where allocation maps each channel
+        to its aggregate touch total.
 
-    # Current allocation
-    current = np.array([constraint_map[v].current_aggregate for v in promo_vars])
+    Raises:
+        ValueError: If inputs are missing, duplicated, or infeasible.
+    """
+    if not promo_vars:
+        raise ValueError("promo_vars must contain at least one channel")
+    if len(set(promo_vars)) != len(promo_vars):
+        raise ValueError("promo_vars must not contain duplicates")
+    if grid_points < 2:
+        raise ValueError("grid_points must be at least 2")
+    if max_rounds < 1:
+        raise ValueError("max_rounds must be at least 1")
+
+    constraint_map = {c.variable: c for c in constraints}
+    if len(constraint_map) != len(constraints):
+        raise ValueError("constraints must contain each variable at most once")
+    missing_constraints = [var for var in promo_vars if var not in constraint_map]
+    missing_columns = [var for var in promo_vars if var not in X_base.columns]
+    if missing_constraints:
+        raise ValueError(f"Missing constraints for channels: {missing_constraints}")
+    if missing_columns:
+        raise ValueError(f"Channels not found in X_base: {missing_columns}")
+
+    current = np.array(
+        [float(X_base[var].to_numpy(dtype=float).sum()) for var in promo_vars],
+        dtype=float,
+    )
+    lower = np.array(
+        [constraint_map[var].per_customer_min * len(X_base) for var in promo_vars],
+        dtype=float,
+    )
+    cap_capacity = np.array(
+        [
+            float(
+                np.maximum(
+                    X_base[var].to_numpy(dtype=float),
+                    constraint_map[var].per_customer_max,
+                ).sum()
+            )
+            for var in promo_vars
+        ],
+        dtype=float,
+    )
+    upper = np.minimum(current * 1.5, cap_capacity)
+    upper = np.maximum(upper, current)
+    if np.any(current < lower - 1e-9):
+        raise ValueError("Current allocation violates a channel minimum")
+
     if total_budget is None:
         total_budget = float(current.sum())
+    if not np.isfinite(total_budget) or total_budget < 0.0:
+        raise ValueError("total_budget must be a finite non-negative touch total")
+    allocation = _project_allocation_to_budget(current, lower, upper, float(total_budget))
 
-    # Baseline prediction with current data
     baseline_mean = float(np.mean(model.predict(X_base)))
 
-    def objective(alloc: np.ndarray) -> float:
-        """Negative mean prediction (minimize = maximize outcome)."""
+    score_cache: dict[tuple[float, ...], float] = {}
+
+    def score(alloc: np.ndarray) -> float:
+        """Return the fitted model's mean prediction for channel totals."""
+        key = tuple(float(value) for value in np.round(alloc, decimals=12))
+        if key in score_cache:
+            return score_cache[key]
         X_sim = X_base.copy()
-        for i, var in enumerate(promo_vars):
-            c = constraint_map[var]
-            scale = alloc[i] / c.current_aggregate if c.current_aggregate > 0 else 0
-            new_vals = X_sim[var].values * scale
-            new_vals = np.clip(new_vals, c.per_customer_min, c.per_customer_max)
-            X_sim[var] = new_vals
-        preds = model.predict(X_sim)
-        return -float(np.mean(preds))
+        for idx, var in enumerate(promo_vars):
+            X_sim[var] = _allocate_channel_aggregate(
+                X_base[var].to_numpy(dtype=float),
+                float(alloc[idx]),
+                constraint_map[var],
+            )
+        mean_prediction = float(np.mean(model.predict(X_sim)))
+        score_cache[key] = mean_prediction
+        return mean_prediction
 
-    # Bounds: 0 to 150% of current per variable
-    bounds = []
-    for var in promo_vars:
-        c = constraint_map[var]
-        bounds.append((0.0, c.current_aggregate * 1.5))
+    best_score = score(allocation)
+    n_channels = len(promo_vars)
+    for _ in range(max_rounds):
+        round_allocation: np.ndarray | None = None
+        round_score = best_score
+        improvement_tolerance = 1e-12 * max(1.0, abs(best_score))
+        for donor in range(n_channels):
+            for receiver in range(n_channels):
+                if donor == receiver:
+                    continue
+                transfers = _pairwise_transfer_candidates(
+                    allocation,
+                    donor,
+                    receiver,
+                    lower,
+                    upper,
+                    grid_points,
+                )
+                for transfer in transfers:
+                    candidate = allocation.copy()
+                    candidate[donor] -= transfer
+                    candidate[receiver] += transfer
+                    candidate_score = score(candidate)
+                    if candidate_score > round_score + improvement_tolerance:
+                        round_allocation = candidate
+                        round_score = candidate_score
+        if round_allocation is None:
+            break
+        allocation = round_allocation
+        best_score = round_score
 
-    # Total budget constraint is enforced via the `constraints=` kwarg below
-    # (np.ones(n_vars) @ x <= total_budget); no separate LinearConstraint object
-    # is needed.
+    residual = float(total_budget) - float(allocation.sum())
+    if abs(residual) > 0.0:
+        room = upper - allocation if residual > 0.0 else allocation - lower
+        allocation[int(np.argmax(room))] += residual
+    if not np.isclose(allocation.sum(), total_budget, rtol=0.0, atol=1e-8):
+        raise RuntimeError("Discrete reallocation did not conserve total touches")
 
-    result = optimize.minimize(
-        objective,
-        x0=current,
-        method="SLSQP",
-        bounds=bounds,
-        constraints={"type": "ineq", "fun": lambda x: total_budget - x.sum()},
-        options={"maxiter": 200, "ftol": 1e-8},
-    )
-
-    optimal_alloc = {var: float(result.x[i]) for i, var in enumerate(promo_vars)}
-    optimal_mean = -result.fun
+    optimal_alloc = {var: float(allocation[idx]) for idx, var in enumerate(promo_vars)}
+    optimal_mean = score(allocation)
     lift_pct = (optimal_mean - baseline_mean) / baseline_mean * 100 if baseline_mean > 0 else 0.0
 
     return optimal_alloc, lift_pct

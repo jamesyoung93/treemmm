@@ -5,6 +5,36 @@ All notable changes to TreeMMM are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Reproducible budget-reallocation script and notebook walkthroughs now call
+  both `reallocate` and `reallocate_curve` on the seeded pharma demo.
+- `CITATION.cff` supplies machine-readable software citation metadata and an
+  explicit arXiv identifier placeholder for the Author to fill at announcement.
+
+### Changed
+
+- `RunConfig.adstock_decay` now applies geometric panel adstock before
+  reverse-causality diagnostics and model fitting, with configuration validation
+  for decay ranges, channel names, and incompatible carryover modes.
+- Budget-neutral mROI reallocation now uses a deterministic discrete pairwise
+  coordinate search instead of gradient-based SLSQP. The heuristic conserves
+  aggregate touch units exactly under row caps and does not supply a channel
+  cost model.
+- The pharma quickstart now states the outputs it actually produces, pins its
+  random seed, and prints portably on Windows legacy console encodings.
+- Reproduction and arXiv-support metadata now identify the current v0.3.1
+  package while retaining the v0.2.1 attribution-core provenance.
+
+### Removed
+
+- **Deprecation/removal note:** `CarryoverMethod.WEIBULL` was a nonfunctional
+  placeholder and has been removed. Configurations that referenced `"weibull"`
+  must use the implemented `"geometric"` carryover until a Weibull kernel is
+  implemented and tested.
+
 ## [0.3.1] - 2026-06-14
 
 Adds a budget decision curve over `reallocate()`. Sweeps the cap-bounded

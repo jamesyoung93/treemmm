@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from math import isfinite
 from typing import Literal
 
 
@@ -47,7 +48,6 @@ class CarryoverMethod(str, Enum):
     """Adstock / carryover transformation method."""
 
     GEOMETRIC = "geometric"
-    WEIBULL = "weibull"
     LAG = "lag"
 
 
@@ -158,15 +158,51 @@ class RunConfig:
             errors.append(f"min_train_frac must be in [0.3, 0.9], got {self.min_train_frac}")
         if self.n_optuna_trials < 1:
             errors.append("n_optuna_trials must be >= 1")
-        if self.objective == Objective.TWEEDIE:
-            if not 1.0 < self.tweedie_variance_power < 2.0:
-                errors.append(
-                    f"tweedie_variance_power must be in (1, 2), "
-                    f"got {self.tweedie_variance_power}"
-                )
+        if (
+            self.objective == Objective.TWEEDIE
+            and not 1.0 < self.tweedie_variance_power < 2.0
+        ):
+            errors.append(
+                f"tweedie_variance_power must be in (1, 2), "
+                f"got {self.tweedie_variance_power}"
+            )
         bad_align = set(self.temporal_alignment.keys()) - set(self.columns.promo_vars)
         if bad_align:
             errors.append(
                 f"temporal_alignment keys not in promo_vars: {bad_align}"
             )
+        if self.adstock_decay is not None:
+            if self.carryover_method is not CarryoverMethod.GEOMETRIC:
+                errors.append(
+                    "adstock_decay requires carryover_method=CarryoverMethod.GEOMETRIC"
+                )
+
+            decay_items: list[tuple[str, object]]
+            if isinstance(self.adstock_decay, dict):
+                bad_decay_keys = set(self.adstock_decay) - set(self.columns.promo_vars)
+                if bad_decay_keys:
+                    errors.append(
+                        f"adstock_decay keys not in promo_vars: {bad_decay_keys}"
+                    )
+                decay_items = list(self.adstock_decay.items())
+            else:
+                decay_items = [("all promo_vars", self.adstock_decay)]
+
+            for channel, value in decay_items:
+                if isinstance(value, bool):
+                    errors.append(
+                        f"adstock_decay for {channel!r} must be numeric in [0, 1), got {value!r}"
+                    )
+                    continue
+                try:
+                    numeric_value = float(value)
+                except (TypeError, ValueError):
+                    errors.append(
+                        f"adstock_decay for {channel!r} must be numeric in [0, 1), got {value!r}"
+                    )
+                    continue
+                if not isfinite(numeric_value) or not 0.0 <= numeric_value < 1.0:
+                    errors.append(
+                        f"adstock_decay for {channel!r} must be in [0, 1), got {value!r}"
+                    )
         return errors

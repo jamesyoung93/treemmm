@@ -10,7 +10,14 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sp_stats
 
-from treemmm.core.config import ColumnSpec, Objective, RunConfig, TemporalAlignment
+from treemmm.core.config import (
+    CarryoverMethod,
+    ColumnSpec,
+    Objective,
+    RunConfig,
+    TemporalAlignment,
+)
+from treemmm.core.preprocessing.adstock import apply_panel_adstock
 
 
 # ---------------------------------------------------------------------------
@@ -463,6 +470,18 @@ def prepare_data(
         df = balance_panel(df, config.columns)
         panel_diag = diagnose_panel(df, config.columns)
 
+    # Apply configured carryover before diagnostics that inspect promo/outcome
+    # timing and before any model fitting. Structural panel balancing must happen
+    # first so an absent period cannot be mistaken for a zero-length time step.
+    if config.adstock_decay is not None:
+        df = apply_panel_adstock(
+            df,
+            time_col=config.columns.time_col,
+            customer_id_col=config.columns.customer_id,
+            channels=config.columns.promo_vars,
+            decay=config.adstock_decay,
+        )
+
     # Distribution diagnostic
     dist_diag = diagnose_distribution(df[config.columns.outcome_col])
 
@@ -492,9 +511,8 @@ def prepare_data(
     )
 
     # Apply carryover / temporal alignment per variable
-    if config.carryover_method == config.carryover_method.LAG:
+    if config.carryover_method is CarryoverMethod.LAG:
         df = add_lags(df, config.columns, config.max_lag)
-    # Geometric/Weibull adstock is applied during Optuna tuning (decay is a hyperparameter)
 
     return PreparedData(
         df=df,

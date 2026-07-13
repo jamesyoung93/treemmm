@@ -1,15 +1,15 @@
-"""TreeMMM Quickstart — Pharma Brand Demo.
+"""TreeMMM Quickstart - Pharma Brand Demo.
 
 Demonstrates the full TreeMMM pipeline on a synthetic pharma dataset:
   1. Generate a realistic pharma panel (500 HCPs x 24 months)
   2. Run the TreeMMM pipeline (LightGBM + SHAP attribution)
-  3. Display results: attribution shares, performance metrics, mROI curves
+  3. Display attribution shares and performance metrics
 
 Usage:
     python examples/quickstart_pharma.py
 
 Requirements:
-    pip install treemmm
+    pip install "treemmm @ git+https://github.com/jamesyoung93/treemmm@v0.3.1"
 """
 
 from __future__ import annotations
@@ -27,7 +27,11 @@ def main() -> None:
     # Step 1: Generate synthetic pharma data
     # ------------------------------------------------------------------
     print("Generating pharma dataset (500 HCPs x 24 months)...")
-    dataset = generate_pharma_dataset(n_customers=500, n_periods=24)
+    dataset = generate_pharma_dataset(
+        n_customers=500,
+        n_periods=24,
+        random_state=42,
+    )
     df = dataset.df
     print(f"  Shape: {df.shape}")
     outcome_col = dataset.columns["outcome_col"]
@@ -70,8 +74,10 @@ def main() -> None:
         )
 
     print("\nResults saved to: output/pharma_quickstart/")
-    print("Files include: attribution_global.csv, attribution_temporal.csv, "
-          "attribution_customer.csv, model_performance.csv, feature_importance.csv")
+    print(
+        "Files include: attribution_global.csv, attribution_temporal.csv, "
+        "attribution_customer.csv, model_performance.csv, feature_importance.csv"
+    )
 
 
 if __name__ == "__main__":

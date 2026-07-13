@@ -119,7 +119,7 @@ class PipelineResult:
                 if r.flagged:
                     lines.append(
                         f"  {r.variable}: lead test p={r.lead_test_p_value:.4f} "
-                        f"→ using {r.recommendation.value} alignment"
+                        f"-> using {r.recommendation.value} alignment"
                     )
 
         return "\n".join(lines)

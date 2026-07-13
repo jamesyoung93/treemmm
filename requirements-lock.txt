@@ -1,4 +1,4 @@
-# Pinned dependency versions used for TreeMMM v0.1.0 benchmark results.
+# Pinned dependency versions used for TreeMMM benchmark reproduction.
 # Generated 2026-02-26 on Python 3.13, Windows 11.
 # Use: pip install -r requirements-lock.txt
 numpy==2.4.2
