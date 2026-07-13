@@ -75,7 +75,7 @@ def _load_summary() -> pd.DataFrame:
 
 def fig1_attribution_recovery(df: pd.DataFrame) -> None:
     """Figure 1: Attribution Recovery MAPE across datasets (grouped bar chart)."""
-    fig, axes = plt.subplots(1, 2, figsize=(16, 6), gridspec_kw={"width_ratios": [2, 1.2]})
+    fig, axes = plt.subplots(2, 1, figsize=(10, 9))
 
     # Determine which models are present in the data
     models_present = [m for m in MODEL_ORDER if m in df["model"].unique()]
@@ -96,16 +96,23 @@ def fig1_attribution_recovery(df: pd.DataFrame) -> None:
         for bar, mape in zip(bars, mapes):
             if mape >= 1:  # skip tiny labels on linear
                 ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.8,
-                        f"{mape:.0f}%", ha="center", va="bottom", fontsize=10,
+                        f"{mape:.0f}%", ha="center", va="bottom", fontsize=12,
+                        rotation=90,
                         fontweight="bold" if "TreeMMM" in model else "normal")
 
-    ax.set_xlabel("Dataset", fontsize=14)
+    ax.set_xlabel("")
     ax.set_ylabel("Attribution Recovery MAPE (%)\nlower is better", fontsize=14)
     ax.set_title("A. TreeMMM achieves lower attribution error\non non-linear datasets",
                  fontsize=14, fontweight="bold", pad=10)
     ax.set_xticks(x + width * (n_models - 1) / 2)
     ax.set_xticklabels([DATASET_LABELS.get(d, d) for d in datasets], fontsize=12)
-    ax.legend(loc="upper left", fontsize=11, framealpha=0.9)
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.17),
+        ncol=3,
+        fontsize=11.5,
+        framealpha=0.9,
+    )
     ax.set_ylim(bottom=0, top=max(df["attribution_mape"].max() * 1.2, 40))
 
     # Panel B: Rank correlation
@@ -121,13 +128,11 @@ def fig1_attribution_recovery(df: pd.DataFrame) -> None:
     ax.set_ylabel("Spearman Rank Correlation", fontsize=14)
     ax.set_title("B. Channel ranking accuracy", fontsize=14, fontweight="bold", pad=10)
     ax.set_xticks(x + width * (n_models - 1) / 2)
-    ax.set_xticklabels([DATASET_LABELS.get(d, d) for d in datasets], fontsize=10)
+    ax.set_xticklabels([DATASET_LABELS.get(d, d) for d in datasets], fontsize=12)
     ax.set_ylim(-0.2, 1.15)
     ax.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
 
-    fig.suptitle("Figure 1: Attribution Recovery Across 4 Benchmark Datasets",
-                 fontsize=16, fontweight="bold", y=1.02)
-    plt.tight_layout()
+    fig.tight_layout(h_pad=5.0)
     fig.savefig(FIGURES_DIR / "fig1_attribution_recovery.png")
     fig.savefig(FIGURES_DIR / "fig1_attribution_recovery.pdf")
     plt.close(fig)
@@ -141,7 +146,7 @@ def fig2_predictive_performance(df: pd.DataFrame) -> None:
     can produce massively negative R-squared (e.g., -800K on pharma) which
     would crush the y-axis; we clip to [-0.5, 1.1] and annotate.
     """
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig, axes = plt.subplots(2, 1, figsize=(10, 9))
 
     datasets = [d for d in DATASET_ORDER if d in df["dataset"].unique()]
     x = np.arange(len(datasets))
@@ -163,10 +168,10 @@ def fig2_predictive_performance(df: pd.DataFrame) -> None:
         for bar, raw, clipped in zip(bars, r2s_raw, r2s):
             if raw < r2_clip[0]:
                 ax.text(bar.get_x() + bar.get_width() / 2, r2_clip[0] + 0.02,
-                        f"({raw:.0f})", ha="center", va="bottom", fontsize=9,
-                        color="red", fontweight="bold")
+                        f"({raw:.0f})", ha="center", va="bottom", fontsize=12,
+                        color="red", fontweight="bold", rotation=90)
 
-    ax.set_xlabel("Dataset", fontsize=14)
+    ax.set_xlabel("")
     ax.set_ylabel("R\u00b2 (test set)", fontsize=14)
     ax.set_title("A. TreeMMM maintains R\u00b2 > 0.5\non all datasets",
                  fontsize=14, fontweight="bold", pad=10)
@@ -174,7 +179,12 @@ def fig2_predictive_performance(df: pd.DataFrame) -> None:
     ax.set_xticklabels([DATASET_LABELS.get(d, d) for d in datasets], fontsize=12)
     ax.set_ylim(*r2_clip)
     ax.axhline(y=0.5, color="green", linestyle="--", alpha=0.5, label="R\u00b2 = 0.5")
-    ax.legend(loc="lower left", fontsize=10)
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.17),
+        ncol=4,
+        fontsize=11.5,
+    )
 
     # Panel B: WMAPE
     ax = axes[1]
@@ -188,8 +198,8 @@ def fig2_predictive_performance(df: pd.DataFrame) -> None:
         for bar, raw, clipped in zip(bars, wmapes_raw, wmapes):
             if raw > wmape_clip:
                 ax.text(bar.get_x() + bar.get_width() / 2, wmape_clip - 0.05,
-                        f"({raw:.1f})", ha="center", va="top", fontsize=9,
-                        color="red", fontweight="bold")
+                        f"({raw:.1f})", ha="center", va="top", fontsize=12,
+                        color="red", fontweight="bold", rotation=90)
 
     ax.set_xlabel("Dataset", fontsize=14)
     ax.set_ylabel("WMAPE (test set)", fontsize=14)
@@ -199,9 +209,7 @@ def fig2_predictive_performance(df: pd.DataFrame) -> None:
     ax.set_xticklabels([DATASET_LABELS.get(d, d) for d in datasets], fontsize=12)
     ax.set_ylim(0, wmape_clip + 0.1)
 
-    fig.suptitle("Figure 7: Predictive Performance Comparison",
-                 fontsize=16, fontweight="bold", y=1.02)
-    plt.tight_layout()
+    fig.tight_layout(h_pad=5.0)
     fig.savefig(FIGURES_DIR / "fig7_predictive_performance.png")
     fig.savefig(FIGURES_DIR / "fig7_predictive_performance.pdf")
     plt.close(fig)
@@ -210,7 +218,7 @@ def fig2_predictive_performance(df: pd.DataFrame) -> None:
 
 def fig3_speed_comparison(df: pd.DataFrame) -> None:
     """Figure 6: Training time comparison."""
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(9, 6))
 
     datasets = [d for d in DATASET_ORDER if d in df["dataset"].unique()]
     x = np.arange(len(datasets))
@@ -226,16 +234,19 @@ def fig3_speed_comparison(df: pd.DataFrame) -> None:
                       edgecolor="white", linewidth=0.5)
         for bar, t in zip(bars, times):
             ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.3,
-                    f"{t:.0f}s", ha="center", va="bottom", fontsize=10, fontweight="bold")
+                    f"{t:.0f}s", ha="center", va="bottom", fontsize=11, fontweight="bold")
 
     ax.set_xlabel("Dataset", fontsize=14)
     ax.set_ylabel("Training + Attribution Time (seconds)", fontsize=14)
-    ax.set_title("Figure 6: Computation Time Comparison\n"
-                 "(3,000 entities x 36 periods, consumer laptop)",
-                 fontsize=14, fontweight="bold", pad=10)
     ax.set_xticks(x + width * (n_models - 1) / 2)
     ax.set_xticklabels([DATASET_LABELS.get(d, d) for d in datasets], fontsize=12)
-    ax.legend(fontsize=11, framealpha=0.9)
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, 1.2),
+        ncol=3,
+        fontsize=11.5,
+        framealpha=0.9,
+    )
 
     plt.tight_layout()
     fig.savefig(FIGURES_DIR / "fig6_speed_comparison.png")
@@ -257,10 +268,13 @@ def fig4_hcs_recovery() -> None:
         return
 
     datasets = sorted(hcs["dataset"].unique())
-    fig, axes = plt.subplots(1, len(datasets), figsize=(6 * len(datasets), 6), squeeze=False)
+    n_cols = min(2, len(datasets))
+    n_rows = (len(datasets) + n_cols - 1) // n_cols
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8), squeeze=False)
+    axes_flat = axes.flatten()
 
     for idx, ds in enumerate(datasets):
-        ax = axes[0, idx]
+        ax = axes_flat[idx]
         ds_data = hcs[hcs["dataset"] == ds]
 
         treemmm_data = ds_data[ds_data["model"] == "TreeMMM (LightGBM)"]
@@ -275,18 +289,28 @@ def fig4_hcs_recovery() -> None:
         # Add value labels
         for bar, c in zip(bars, corrs):
             ax.text(max(c + 0.02, 0.05), bar.get_y() + bar.get_height() / 2,
-                    f"{c:.2f}", va="center", fontsize=11, fontweight="bold")
-        ax.axvline(x=0.6, color="green", linestyle="--", alpha=0.7, label="Strong (\u03c1=0.6)")
+                    f"{c:.2f}", va="center", fontsize=11.5, fontweight="bold")
+        ax.axvline(x=0.6, color="green", linestyle="--", alpha=0.7)
         ax.axvline(x=0, color="gray", linestyle="-", alpha=0.3)
-        ax.set_xlabel("Spearman \u03c1 (true vs. recovered sensitivity)", fontsize=13)
+        ax.set_xlabel("Spearman \u03c1\n(true vs. recovered sensitivity)", fontsize=13)
         ax.set_title(f"{ds.title()} Dataset", fontsize=14, fontweight="bold", pad=10)
         ax.set_xlim(-0.3, 1.0)
         ax.tick_params(axis="y", labelsize=12)
-        ax.legend(fontsize=10)
+        if idx == 0:
+            ax.text(
+                0.62,
+                0.98,
+                "Strong (\u03c1 = 0.6)",
+                transform=ax.get_xaxis_transform(),
+                ha="left",
+                va="top",
+                fontsize=11.5,
+                color="green",
+            )
 
-    fig.suptitle("Figure 5: Customer-Level Sensitivity Recovery\n"
-                 "Moderate correlations; strongest where HCS variance is widest",
-                 fontsize=16, fontweight="bold", y=1.04)
+    for idx in range(len(datasets), len(axes_flat)):
+        axes_flat[idx].set_visible(False)
+
     plt.tight_layout()
     fig.savefig(FIGURES_DIR / "fig5_hcs_recovery.png")
     fig.savefig(FIGURES_DIR / "fig5_hcs_recovery.pdf")
@@ -304,7 +328,7 @@ def fig5_distribution_matching() -> None:
     with open(dist_path) as f:
         data = json.load(f)
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5.2))
 
     # Panel A: Pharma
     ax = axes[0]
@@ -335,9 +359,6 @@ def fig5_distribution_matching() -> None:
     ax.set_ylim(bottom=0, top=max(values) * 1.25)
     ax.tick_params(axis="x", labelsize=13)
 
-    fig.suptitle("Figure 4: Choosing the Right Objective Matters\n"
-                 "50-56% improvement from correct distribution matching",
-                 fontsize=16, fontweight="bold", y=1.05)
     plt.tight_layout()
     fig.savefig(FIGURES_DIR / "fig4_distribution_matching.png")
     fig.savefig(FIGURES_DIR / "fig4_distribution_matching.pdf")
@@ -358,10 +379,15 @@ def fig6_attribution_shares() -> None:
         return
 
     n_ds = len(datasets_to_plot)
-    fig, axes = plt.subplots(1, n_ds, figsize=(5.5 * n_ds, 7), squeeze=False)
+    n_cols = min(2, n_ds)
+    n_rows = (n_ds + n_cols - 1) // n_cols
+    fig, axes = plt.subplots(
+        n_rows, n_cols, figsize=(10, 4.2 * n_rows), squeeze=False
+    )
+    axes_flat = axes.flatten()
 
     for idx, ds_name in enumerate(datasets_to_plot):
-        ax = axes[0, idx]
+        ax = axes_flat[idx]
         df = pd.read_csv(RESULTS_DIR / f"benchmark_{ds_name}.csv")
 
         treemmm_row = df[df["model"] == "TreeMMM (LightGBM)"].iloc[0]
@@ -391,16 +417,17 @@ def fig6_attribution_shares() -> None:
                 color="#2196F3", edgecolor="white")
 
         ax.set_yticks(y)
-        ax.set_yticklabels([v.replace("_", " ").title() for v in common_vars], fontsize=12)
+        ax.set_yticklabels(
+            [v.replace("_", " ").title() for v in common_vars], fontsize=12
+        )
         ax.set_xlabel("Attribution Share (%)", fontsize=13)
         ax.set_title(f"{ds_name.title()}", fontsize=14, fontweight="bold", pad=10)
         ax.legend(fontsize=11)
         ax.invert_yaxis()
         ax.tick_params(axis="x", labelsize=11)
 
-    fig.suptitle("Figure 2: Ground Truth vs. Recovered Attribution Shares\n"
-                 "TreeMMM correctly identifies relative channel importance across datasets",
-                 fontsize=16, fontweight="bold", y=1.04)
+    for idx in range(n_ds, len(axes_flat)):
+        axes_flat[idx].set_visible(False)
     plt.tight_layout()
     fig.savefig(FIGURES_DIR / "fig2_attribution_shares.png")
     fig.savefig(FIGURES_DIR / "fig2_attribution_shares.pdf")
@@ -472,8 +499,9 @@ def fig7_interaction_detection() -> None:
     ).reset_index(drop=True)
 
     n = len(rec_df)
-    fig_h = max(4, 0.45 * n + 1.5)
-    fig, ax = plt.subplots(figsize=(11, fig_h))
+    row_step = 1.35
+    fig_h = max(4, 0.6 * n + 1.4)
+    fig, ax = plt.subplots(figsize=(10.5, fig_h))
 
     status_color = {"TP": "#2ca02c", "FN": "#d62728", "FP": "#f7b500"}
     status_label = {
@@ -483,22 +511,30 @@ def fig7_interaction_detection() -> None:
     }
 
     for i, row in rec_df.iterrows():
-        y = n - i - 1  # render top-to-bottom in dataset/status order
+        y = (n - i - 1) * row_step  # render top-to-bottom in dataset/status order
         rect_color = status_color[row["status"]]
         text_color = "white"
-        ax.barh(y, 1.0, color=rect_color, edgecolor="white", linewidth=2)
+        ax.barh(
+            y,
+            1.0,
+            height=1.15,
+            color=rect_color,
+            edgecolor="white",
+            linewidth=2,
+        )
         # Cell text: pair name + explicit planted/discovered status
         planted = "✓" if row["status"] in ("TP", "FN") else "✗"
         discovered = "✓" if row["status"] in ("TP", "FP") else "✗"
         cell_text = (
-            f"{row['dataset']}: {row['pair']}    "
+            f"{row['dataset']}: {row['pair']}\n"
             f"planted={planted}  discovered={discovered}"
         )
         ax.text(0.02, y, cell_text, va="center", ha="left",
-                fontsize=10, color=text_color, fontweight="bold")
+                fontsize=12, color=text_color, fontweight="bold",
+                linespacing=1.05)
 
     ax.set_xlim(0, 1)
-    ax.set_ylim(-0.5, n - 0.5)
+    ax.set_ylim(-0.6, (n - 1) * row_step + 0.6)
     ax.set_xticks([])
     ax.set_yticks([])
     ax.spines[:].set_visible(False)
@@ -510,22 +546,8 @@ def fig7_interaction_detection() -> None:
     ]
     ax.legend(handles=legend_handles, loc="upper center",
               bbox_to_anchor=(0.5, 1.05 + 1.5 / n), ncol=3,
-              fontsize=10, frameon=False)
+              fontsize=12, frameon=False)
 
-    # Summary numbers in the title
-    n_tp = (rec_df["status"] == "TP").sum()
-    n_fn = (rec_df["status"] == "FN").sum()
-    n_fp = (rec_df["status"] == "FP").sum()
-    precision = n_tp / (n_tp + n_fp) if (n_tp + n_fp) > 0 else 0
-    recall = n_tp / (n_tp + n_fn) if (n_tp + n_fn) > 0 else 0
-    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
-
-    ax.set_title(
-        f"Figure 3: Interaction Discovery — Per-Cell Planted vs. Discovered Status\n"
-        f"TreeMMM detection (TP={n_tp}, FN={n_fn}, FP={n_fp}); "
-        f"precision={precision:.2f}, recall={recall:.2f}, F1={f1:.2f}",
-        fontsize=12, fontweight="bold", pad=24,
-    )
     plt.tight_layout()
     fig.savefig(FIGURES_DIR / "fig3_interaction_detection.png")
     fig.savefig(FIGURES_DIR / "fig3_interaction_detection.pdf")
@@ -582,7 +604,7 @@ def fig8_mroi_response_curves() -> None:
     n_rows = (n_vars + n_cols - 1) // n_cols
 
     fig, axes = plt.subplots(
-        n_rows, n_cols, figsize=(6 * n_cols, 5 * n_rows), squeeze=False
+        n_rows, n_cols, figsize=(3.4 * n_cols, 3.2 * n_rows), squeeze=False
     )
 
     for idx, var in enumerate(variables):
@@ -622,20 +644,12 @@ def fig8_mroi_response_curves() -> None:
         ax.set_xlabel("% of Current Allocation", fontsize=13)
         ax.set_ylabel("Indexed Response\n(Baseline = 100)", fontsize=13)
         ax.set_title(var.replace("_", " ").title(), fontsize=14, fontweight="bold", pad=8)
-        ax.legend(fontsize=10)
+        ax.legend(fontsize=12)
         ax.tick_params(labelsize=11)
 
     for idx in range(n_vars, n_rows * n_cols):
         axes[idx // n_cols, idx % n_cols].set_visible(False)
 
-    fig.suptitle(
-        "Figure 8: Response Curves vs. Ground Truth (Pharma)\n"
-        "TreeMMM tracks the true diminishing-returns shape; "
-        "GLMM-Naive distorts slopes via log-linear back-transformation",
-        fontsize=15,
-        fontweight="bold",
-        y=1.03,
-    )
     plt.tight_layout()
     fig.savefig(FIGURES_DIR / "fig8_mroi_response_curves.png", dpi=300, bbox_inches="tight")
     fig.savefig(FIGURES_DIR / "fig8_mroi_response_curves.pdf", bbox_inches="tight")
@@ -672,7 +686,13 @@ def fig9_mroi_accuracy() -> None:
     width = 0.35 if n_models > 1 else 0.6
     model_colors = {"TreeMMM": "#2196F3", "GLMM-Naive": "#FF9800"}
 
-    fig, axes = plt.subplots(1, 3, figsize=(16, 6))
+    fig = plt.figure(figsize=(12, 9))
+    grid = fig.add_gridspec(2, 2, height_ratios=(1.0, 1.0))
+    axes = (
+        fig.add_subplot(grid[0, 0]),
+        fig.add_subplot(grid[0, 1]),
+        fig.add_subplot(grid[1, :]),
+    )
 
     # Panel A: mROI Rank Correlation
     ax = axes[0]
@@ -685,15 +705,17 @@ def fig9_mroi_accuracy() -> None:
                       color=model_colors.get(m, "#9E9E9E"), edgecolor="white")
         for bar, v in zip(bars, vals):
             ax.text(bar.get_x() + bar.get_width() / 2,
-                    max(bar.get_height() + 0.02, 0.05),
-                    f"{v:.2f}", ha="center", va="bottom", fontsize=10, fontweight="bold")
+                    max(bar.get_height() + 0.02 + 0.06 * i, 0.05),
+                    f"{v:.2f}", ha="center", va="bottom", fontsize=13.5,
+                    fontweight="bold")
     ax.axhline(y=0.6, color="green", linestyle="--", alpha=0.7, label="Threshold (0.6)")
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=30, ha="right", fontsize=12)
+    ax.set_xticklabels(labels, rotation=20, ha="right", fontsize=13.5)
     ax.set_ylabel("Spearman rho", fontsize=14)
     ax.set_title("A. mROI Ranking\n(TreeMMM: 0.96 mean)", fontsize=14, fontweight="bold", pad=10)
     ax.set_ylim(-0.2, 1.2)
-    ax.legend(fontsize=10)
+    ax.tick_params(axis="y", labelsize=13.5)
+    ax.legend(fontsize=13.5)
 
     # Panel B: Direction Accuracy
     ax = axes[1]
@@ -705,16 +727,19 @@ def fig9_mroi_accuracy() -> None:
         bars = ax.bar(x + offset, vals, width, label=m,
                       color=model_colors.get(m, "#9E9E9E"), edgecolor="white")
         for bar, v in zip(bars, vals):
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 1,
-                    f"{v:.0f}%", ha="center", va="bottom", fontsize=10, fontweight="bold")
+            ax.text(bar.get_x() + bar.get_width() / 2,
+                    bar.get_height() + 1 + 4 * i,
+                    f"{v:.0f}%", ha="center", va="bottom", fontsize=13.5,
+                    fontweight="bold")
     ax.axhline(y=60, color="green", linestyle="--", alpha=0.7, label="Threshold (60%)")
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=30, ha="right", fontsize=12)
+    ax.set_xticklabels(labels, rotation=20, ha="right", fontsize=13.5)
     ax.set_ylabel("Direction Accuracy (%)", fontsize=14)
     ax.set_title("B. Correct increase/decrease\ndirection (94% mean)",
                  fontsize=14, fontweight="bold", pad=10)
     ax.set_ylim(0, 115)
-    ax.legend(fontsize=10)
+    ax.tick_params(axis="y", labelsize=13.5)
+    ax.legend(fontsize=13.5)
 
     # Panel C: Lift Comparison (predicted vs true for TreeMMM)
     ax = axes[2]
@@ -744,23 +769,17 @@ def fig9_mroi_accuracy() -> None:
         ax.text(bar.get_x() + bar.get_width() / 2,
                 bar.get_height() + (0.3 if v >= 0 else -0.6),
                 f"{v:.1f}%", ha="center", va="bottom" if v >= 0 else "top",
-                fontsize=10, fontweight="bold")
+                fontsize=13.5, fontweight="bold")
     ax.set_xticks(tx)
-    ax.set_xticklabels(t_labels, rotation=30, ha="right", fontsize=12)
+    ax.set_xticklabels(t_labels, rotation=0, ha="center", fontsize=13.5)
     ax.set_ylabel("Lift (%)", fontsize=14)
     ax.set_title("C. Predicted vs. true lift\nfrom budget reallocation",
                  fontsize=14, fontweight="bold", pad=10)
-    ax.legend(fontsize=10)
+    ax.tick_params(axis="y", labelsize=13.5)
+    ax.legend(fontsize=13.5)
     ax.axhline(y=0, color="gray", linestyle="-", alpha=0.3)
 
-    fig.suptitle(
-        "Figure 9: mROI Benchmarking Results\n"
-        "Model-predicted response curves validate against DGP ground truth",
-        fontsize=16,
-        fontweight="bold",
-        y=1.04,
-    )
-    plt.tight_layout()
+    fig.tight_layout()
     fig.savefig(FIGURES_DIR / "fig9_mroi_accuracy.png", dpi=300, bbox_inches="tight")
     fig.savefig(FIGURES_DIR / "fig9_mroi_accuracy.pdf", bbox_inches="tight")
     plt.close(fig)
@@ -794,7 +813,13 @@ def fig10_prior_sensitivity() -> None:
         columns={"share_mean": "share_swing_pp"},
     )
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 6.5))
+    fig, axes = plt.subplots(
+        1,
+        2,
+        figsize=(12, 9.5),
+        sharey=True,
+        gridspec_kw={"width_ratios": (1.15, 1.0)},
+    )
 
     # Panel A: one bar per (dataset, channel) pair, grouped by dataset.
     # Use a flat (dataset, channel) listing rather than per-channel grouping
@@ -816,36 +841,42 @@ def fig10_prior_sensitivity() -> None:
     if len(flat) == 0:
         return
 
-    xs = np.arange(len(flat))
+    ys = np.arange(len(flat))
     colors = [palette_ds.get(d, "#888") for d in flat["dataset"]]
-    ax.bar(xs, flat["swing_pp"].values, color=colors, edgecolor="white", width=0.85)
+    swing = flat["swing_pp"].to_numpy(dtype=float)
+    positive = swing[swing > 0]
+    x_floor = float(positive.min() / 2.0) if positive.size else 1e-4
+    ax.hlines(ys, x_floor, swing, color=colors, linewidth=2.5, alpha=0.75)
+    ax.scatter(swing, ys, color=colors, s=55, zorder=3)
 
     # Decision-relevant threshold lines at sensible pp values.
-    ax.axhline(y=5.0, color="red", linestyle="--", alpha=0.6,
+    ax.axvline(x=5.0, color="red", linestyle="--", alpha=0.6,
                label="5pp swing threshold (budget-relevant)")
-    ax.axhline(y=1.0, color="orange", linestyle=":", alpha=0.6,
+    ax.axvline(x=1.0, color="orange", linestyle=":", alpha=0.6,
                label="1pp swing threshold (precision-relevant)")
-    ax.set_xticks(xs)
-    xlabels = [f"{r['dataset']}\n{r['variable']}" for _, r in flat.iterrows()]
-    ax.set_xticklabels(xlabels, rotation=70, ha="right", fontsize=8)
-    ax.set_ylabel("Share swing (max - min) across 0.5x / 1x / 2x priors (pp)",
-                  fontsize=12)
-    ax.set_title("A. Channel-share volatility under 0.5x / 1x / 2x priors\n"
-                 "(all swings below 0.07pp — data dominates priors at this n)",
-                 fontsize=13, fontweight="bold", pad=10)
-    # Add dataset legend
-    from matplotlib.patches import Patch
-    legend_handles = [Patch(facecolor=palette_ds[ds],
-                            label=DATASET_LABELS.get(ds, ds))
-                      for ds in datasets if ds in palette_ds]
-    legend_handles.append(plt.Line2D([0], [0], color="red", linestyle="--",
-                                     label="5pp swing threshold"))
-    legend_handles.append(plt.Line2D([0], [0], color="orange", linestyle=":",
-                                     label="1pp swing threshold"))
-    ax.legend(handles=legend_handles, loc="upper right", fontsize=9,
-              framealpha=0.9, ncol=2)
-    ax.set_ylim(bottom=0, top=max(flat["swing_pp"].max() * 1.5, 0.15))
-    ax.grid(True, axis="y", alpha=0.25)
+    ax.set_xscale("log")
+    ax.set_xlim(left=x_floor, right=7.0)
+    ax.set_yticks(ys)
+    ylabels = [
+        f"{r['dataset'].title()} · {str(r['variable']).replace('_', ' ')}"
+        for _, r in flat.iterrows()
+    ]
+    ax.set_yticklabels(ylabels, fontsize=13.5)
+    ax.invert_yaxis()
+    ax.set_xlabel(
+        "Share swing (pp; log scale; lines at 1 and 5 pp)",
+        fontsize=13.5,
+    )
+    ax.set_title(
+        "A. Channel-share volatility\n"
+        "under 0.5x / 1x / 2x priors\n"
+        "(all swings below 0.07 pp)",
+        fontsize=14,
+        fontweight="bold",
+        pad=10,
+    )
+    ax.tick_params(axis="x", labelsize=13.5)
+    ax.grid(True, axis="x", alpha=0.25)
 
     # Panel B: posterior 90% CI per channel at the default prior, by dataset
     # Each (dataset, channel) gets its own column to avoid alignment issues
@@ -866,41 +897,37 @@ def fig10_prior_sensitivity() -> None:
                 })
         if rows:
             cols_df = pd.DataFrame(rows)
-            xs = np.arange(len(cols_df))
+            order = flat[["dataset", "variable"]].copy()
+            cols_df = order.merge(
+                cols_df,
+                on=["dataset", "variable"],
+                how="left",
+                validate="one_to_one",
+            )
+            ys = np.arange(len(cols_df))
             mids = cols_df["share_mean"].values
             lows = cols_df["share_ci5"].values
             his = cols_df["share_ci95"].values
             colors = [palette_ds.get(d, "#888") for d in cols_df["dataset"]]
-            for x, m, lo, hi, c in zip(xs, mids, lows, his, colors):
+            for y, m, lo, hi, c in zip(ys, mids, lows, his, colors):
                 ax.errorbar(
-                    x, m, yerr=[[m - lo], [hi - m]],
+                    m, y, xerr=[[m - lo], [hi - m]],
                     fmt="o", capsize=4, color=c,
                 )
-            xlabels = [f"{cols_df.loc[i, 'dataset']}\n{cols_df.loc[i, 'variable']}"
-                       for i in range(len(cols_df))]
-            ax.set_xticks(xs)
-            ax.set_xticklabels(xlabels, rotation=70, ha="right", fontsize=8)
-            # Add per-dataset legend handles
-            from matplotlib.lines import Line2D
-            handles = [
-                Line2D([0], [0], marker="o", color="w",
-                       markerfacecolor=palette_ds.get(ds, "#888"),
-                       markersize=8, label=DATASET_LABELS.get(ds, ds))
-                for ds in datasets
-            ]
-            ax.legend(handles=handles, loc="upper right", fontsize=10)
-    ax.set_ylabel("Share (posterior mean ± 90% CI)", fontsize=14)
-    ax.set_title("B. Posterior 90% credible intervals (default prior)\n"
-                 "Wide CI = high uncertainty even before prior shift",
-                 fontsize=13, fontweight="bold", pad=10)
-    ax.legend(loc="upper right", fontsize=10)
-    ax.set_ylim(bottom=0)
-
-    fig.suptitle(
-        "Figure 10: Bayesian Prior Sensitivity (PyMC-Hier-Naive)",
-        fontsize=16, fontweight="bold", y=1.03,
+    ax.set_xlabel("Share (posterior mean ± 90% CI)", fontsize=13.5)
+    ax.set_title(
+        "B. Posterior 90% credible intervals\n"
+        "(default prior)\n"
+        "Wide CI = high uncertainty before prior shift",
+        fontsize=14,
+        fontweight="bold",
+        pad=10,
     )
-    plt.tight_layout()
+    ax.tick_params(axis="x", labelsize=13.5)
+    ax.set_xlim(left=0)
+    ax.grid(True, axis="x", alpha=0.25)
+
+    fig.tight_layout()
     fig.savefig(FIGURES_DIR / "fig10_prior_sensitivity.png")
     fig.savefig(FIGURES_DIR / "fig10_prior_sensitivity.pdf")
     plt.close(fig)

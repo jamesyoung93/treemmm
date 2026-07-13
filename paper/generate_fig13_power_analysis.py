@@ -139,7 +139,7 @@ def generate_fig13(csv_path: Path | None = None) -> None:
 
     fig, axes = plt.subplots(
         2, 2,
-        figsize=(13, 9),
+        figsize=(9, 7),
         sharex=False,
         sharey=False,
     )
@@ -191,7 +191,7 @@ def generate_fig13(csv_path: Path | None = None) -> None:
                 f"crossover\nn={co:,}",
                 xy=(co, ax.get_ylim()[1] * 0.95),
                 xycoords="data",
-                fontsize=9,
+                fontsize=10.5,
                 color="gray",
                 ha="center",
                 va="top",
@@ -210,21 +210,6 @@ def generate_fig13(csv_path: Path | None = None) -> None:
 
         if ax_idx == 0:
             ax.legend(loc="upper right", framealpha=0.85)
-
-    # Shared figure title and overall annotation
-    fig.suptitle(
-        "Figure 13. Power analysis: attribution-share MAPE vs DGP ground truth, "
-        "by sample size.\n"
-        "Each line is one model; x-axis log-scaled. "
-        "Dotted vertical line = crossover where TreeMMM MAPE rises above GLMM-Naive.\n"
-        "Single seed (seed=42) at each scale — smaller-n cells exhibit visible "
-        "seed noise; the headline 3,000 column is corroborated by 5-seed CIs "
-        "(Section 5.1, Table 2a). Non-monotonic lines (e.g. TreeMMM pharma "
-        "17→28→11→16%) are single-seed variability, not model pathology.",
-        fontsize=10,
-        y=1.04,
-        ha="center",
-    )
 
     plt.tight_layout()
 

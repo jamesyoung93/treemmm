@@ -315,7 +315,7 @@ def _generate_figure(df_sweep: pd.DataFrame) -> None:
         }
     )
 
-    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(9.5, 5))
 
     # --- Panel A: Precision-Recall scatter, colored by F1 ---
     ax = axes[0]
@@ -368,7 +368,7 @@ def _generate_figure(df_sweep: pd.DataFrame) -> None:
     ax.set_ylim(-0.05, 1.10)
     ax.axhline(0.5, color="grey", lw=0.8, ls="--", alpha=0.5)
     ax.axvline(0.5, color="grey", lw=0.8, ls="--", alpha=0.5)
-    ax.legend(loc="lower left", framealpha=0.9, fontsize=9)
+    ax.legend(loc="lower left", framealpha=0.9, fontsize=11)
     ax.grid(True, alpha=0.3)
 
     # --- Panel B: F1 heat-map over (threshold_pct, corr_threshold) ---
@@ -398,7 +398,7 @@ def _generate_figure(df_sweep: pd.DataFrame) -> None:
         for j in range(len(CORR_THRESHOLDS)):
             val = pivot_sorted.values[i, j]
             color = "white" if val < 0.35 or val > 0.75 else "black"
-            ax2.text(j, i, f"{val:.2f}", ha="center", va="center", fontsize=9, color=color)
+            ax2.text(j, i, f"{val:.2f}", ha="center", va="center", fontsize=11, color=color)
 
     # Mark default cell
     default_col_idx = CORR_THRESHOLDS.index(DEFAULT_CORR)
@@ -414,16 +414,9 @@ def _generate_figure(df_sweep: pd.DataFrame) -> None:
             label="Default (3%, 0.10)",
         )
     )
-    ax2.legend(loc="lower right", framealpha=0.9, fontsize=9)
+    ax2.legend(loc="lower right", framealpha=0.9, fontsize=11)
     plt.colorbar(im, ax=ax2, label="F1 score")
 
-    fig.suptitle(
-        "Figure 11. Interaction discovery: threshold sensitivity sweep\n"
-        "5 × 5 grid over SHAP importance % and |Spearman| correlation threshold "
-        "(pharma + CPG + SaaS combined)",
-        y=1.01,
-        fontsize=13,
-    )
     fig.tight_layout()
 
     png_path = FIGURES_DIR / "fig11_threshold_pr_curve.png"

@@ -1,29 +1,21 @@
 % refs.bib — TreeMMM paper bibliography
 % Wave 2 (IJF lit-review pass), 2026-05-10
 % Format: BibTeX compatible with elsarticle-num bibliography style
-% Total entries: 52
+% Total entries: 54
 
 % -----------------------------------------------------------------------
 % EXISTING CITATIONS (retained from Wave 1 / original paper)
 % -----------------------------------------------------------------------
-
-@article{kisilevich2022,
-  author  = {Kisilevich, Slava},
-  title   = {Machine Learning for Marketing Mix Modeling},
-  journal = {Towards Data Science},
-  year    = {2022},
-  note    = {Blog post. Available at \url{https://towardsdatascience.com}}
-}
 
 @inproceedings{lundberg2017unified,
   author    = {Lundberg, Scott M. and Lee, Su-In},
   title     = {A Unified Approach to Interpreting Model Predictions},
   booktitle = {Advances in Neural Information Processing Systems},
   volume    = {30},
+  pages     = {4765--4774},
   year      = {2017},
   publisher = {Curran Associates},
-  doi       = {10.48550/arXiv.1705.07874},
-  url       = {https://arxiv.org/abs/1705.07874}
+  url       = {https://proceedings.neurips.cc/paper_files/paper/2017/hash/8a20a8621978632d76c43dfd28b67767-Abstract.html}
 }
 
 @article{lundberg2020trees,
@@ -40,20 +32,24 @@
 }
 
 @article{mulc2025nnn,
-  author  = {Mulc, Thomas and others},
+  author  = {Mulc, Thomas and Anderson, Mike and Cubre, Paul and Zhang, Huikun
+             and Liu, Ivy and Kumar, Saket},
   title   = {{NNN}: Next-Generation Neural Networks for Marketing Measurement},
   journal = {arXiv preprint arXiv:2504.06212},
   year    = {2025},
+  doi     = {10.48550/arXiv.2504.06212},
   url     = {https://arxiv.org/abs/2504.06212}
 }
 
 @inproceedings{gong2024causalmmm,
-  author    = {Gong, Chang and others},
+  author    = {Gong, Chang and Yao, Di and Zhang, Lei and Chen, Sheng
+               and Li, Wenbin and Su, Yueyang and Bi, Jingping},
   title     = {{CausalMMM}: Learning Causal Structure for Marketing Mix Modeling},
   booktitle = {Proceedings of the 17th {ACM} International Conference on Web Search and Data Mining ({WSDM})},
   year      = {2024},
   publisher = {ACM},
-  doi       = {10.1145/3616855.3635766}
+  doi       = {10.1145/3616855.3635766},
+  url       = {https://arxiv.org/abs/2406.16728}
 }
 
 % AUDIT NOTE (2026-05-10): ghost citation — not cited in prose body; appears only in reference list.
@@ -80,7 +76,7 @@
 }
 
 @inproceedings{janzing2020feature,
-  author    = {Janzing, Dominik and Minorics, Lenon and Bl{\"o}baum, Patrick},
+  author    = {Janzing, Dominik and Minorics, Lenon and Bloebaum, Patrick},
   title     = {Feature relevance quantification in explainable {AI}: A causal problem},
   booktitle = {Proceedings of the 23rd International Conference on Artificial Intelligence
                and Statistics ({AISTATS})},
@@ -89,7 +85,7 @@
   year      = {2020},
   publisher = {PMLR},
   doi       = {10.48550/arXiv.1910.13413},
-  url       = {https://arxiv.org/abs/1910.13413}
+  url       = {https://proceedings.mlr.press/v108/janzing20a.html}
 }
 
 @article{athey2019generalized,
@@ -161,10 +157,13 @@
 }
 
 @article{tirumala2025deepcausalmmm,
-  author  = {Tirumala, Aditya Puttaparthi},
-  title   = {{DeepCausalMMM}: Deep Marketing Mix Modeling with Causal Structure Learning},
+  author  = {Puttaparthi Tirumala, Aditya},
+  title   = {{DeepCausalMMM}: A Deep Learning Framework for Marketing Mix Modeling with Causal Structure Learning},
   journal = {Journal of Open Source Software},
-  year    = {2025},
+  volume  = {11},
+  number  = {120},
+  pages   = {9914},
+  year    = {2026},
   doi     = {10.21105/joss.09914},
   url     = {https://doi.org/10.21105/joss.09914}
 }
@@ -193,13 +192,13 @@
 % pymclabs2025comparison removed during ref audit (2026-05-11) — ghost
 % entry, no body citation; vendor blog is not academic-grade citation.
 
-@misc{robyn2022,
-  author       = {{Meta Open Source}},
-  title        = {Robyn: Continuous \& Semi-Automated {MMM}},
-  year         = {2022},
-  howpublished = {GitHub},
-  url          = {https://github.com/facebookexperimental/Robyn},
-  note         = {\url{https://github.com/facebookexperimental/Robyn}}
+@article{runge2024robyn,
+  author  = {Runge, Julian and Skokan, Igor and Zhou, Gufeng and Pauwels, Koen},
+  title   = {Packaging Up Media Mix Modeling: An Introduction to {Robyn}'s Open-Source Approach},
+  journal = {arXiv preprint arXiv:2403.14674},
+  year    = {2024},
+  doi     = {10.48550/arXiv.2403.14674},
+  url     = {https://arxiv.org/abs/2403.14674}
 }
 
 @article{ke2017lightgbm,
@@ -220,15 +219,30 @@
   pages     = {785--794},
   year      = {2016},
   publisher = {ACM},
-  doi       = {10.1145/2939672.2939785}
+  doi       = {10.1145/2939672.2939785},
+  url       = {https://doi.org/10.1145/2939672.2939785}
+}
+
+@inproceedings{prokhorenkova2018catboost,
+  author    = {Prokhorenkova, Liudmila and Gusev, Gleb and Vorobev, Aleksandr
+               and Dorogush, Anna Veronika and Gulin, Andrey},
+  title     = {{CatBoost}: Unbiased Boosting with Categorical Features},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {31},
+  pages     = {6638--6648},
+  year      = {2018},
+  publisher = {Curran Associates},
+  url       = {https://proceedings.neurips.cc/paper_files/paper/2018/hash/14491b756b3a51daac41c24863285549-Abstract.html}
 }
 
 @article{akiba2019optuna,
-  author  = {Akiba, Takuya and Sano, Shotaro and Yanase, Toshihiko and Ohta, Tetsuro
+  author  = {Akiba, Takuya and Sano, Shotaro and Yanase, Toshihiko and Ohta, Takeru
              and Koyama, Masanori},
   title   = {Optuna: A Next-generation Hyperparameter Optimization Framework},
   journal = {arXiv preprint arXiv:1907.10902},
-  year    = {2019}
+  year    = {2019},
+  doi     = {10.48550/arXiv.1907.10902},
+  url     = {https://arxiv.org/abs/1907.10902}
 }
 
 @article{salvatier2016pymc3,
@@ -239,14 +253,6 @@
   pages   = {e55},
   year    = {2016},
   doi     = {10.7717/peerj-cs.55}
-}
-
-@misc{praveen76github,
-  author       = {Praveen76},
-  title        = {Marketing-Mix-Model},
-  year         = {2022},
-  howpublished = {GitHub},
-  note         = {\url{https://github.com/Praveen76/Marketing-Mix-Model}}
 }
 
 % -----------------------------------------------------------------------
@@ -270,7 +276,7 @@
   year         = {2023},
   howpublished = {GitHub},
   url          = {https://github.com/pymc-labs/pymc-marketing},
-  note         = {\url{https://github.com/pymc-labs/pymc-marketing}}
+  note         = {Version 0.19.4; \url{https://github.com/pymc-labs/pymc-marketing}}
 }
 
 @misc{orbit2021uber,
@@ -460,6 +466,28 @@
 
 % --- Adstock / carryover dynamics ---
 
+@article{broadbent1979oneway,
+  author  = {Broadbent, Simon},
+  title   = {One Way {TV} Advertisements Work},
+  journal = {Journal of the Market Research Society},
+  volume  = {21},
+  number  = {3},
+  pages   = {139--166},
+  year    = {1979}
+}
+
+@article{little1979aggregate,
+  author  = {Little, John D. C.},
+  title   = {Aggregate Advertising Models: The State of the Art},
+  journal = {Operations Research},
+  volume  = {27},
+  number  = {4},
+  pages   = {629--667},
+  year    = {1979},
+  doi     = {10.1287/opre.27.4.629},
+  url     = {https://doi.org/10.1287/opre.27.4.629}
+}
+
 @incollection{tellis2006modeling,
   author    = {Tellis, Gerard J.},
   title     = {Modeling Marketing Mix},
@@ -546,11 +574,23 @@
 }
 
 @techreport{chan2017challenges,
-  author      = {Chan, David and Perry, Mike},
+  author      = {Chan, David and Perry, Michael},
   title       = {Challenges and Opportunities in Media Mix Modeling},
   institution = {Google Inc.},
   year        = {2017},
   url         = {https://research.google/pubs/challenges-and-opportunities-in-media-mix-modeling/}
+}
+
+@article{manchanda2004response,
+  author  = {Manchanda, Puneet and Rossi, Peter E. and Chintagunta, Pradeep K.},
+  title   = {Response Modeling with Nonrandom Marketing-Mix Variables},
+  journal = {Journal of Marketing Research},
+  volume  = {41},
+  number  = {4},
+  pages   = {467--478},
+  year    = {2004},
+  doi     = {10.1509/jmkr.41.4.467.47005},
+  url     = {https://doi.org/10.1509/jmkr.41.4.467.47005}
 }
 
 % berman2022 removed during polish round (2026-05-11) — confirmed zero
