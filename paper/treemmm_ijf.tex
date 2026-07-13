@@ -471,16 +471,20 @@ Linear  & 3K$\times$36 & Gaussian             & 3 & None           & None & None
 The pharma DGP functional form (illustrative) is:
 \begin{equation}
 \label{eq:pharma_dgp}
-\lambda_{i,t} = \exp\!\left(
-  \beta_0
-  + \sum_k \beta_{i,k} f_k(x_{i,k,t})
-  + \gamma_1 x_{\text{rep},i,t} x_{\text{samp},i,t}
-  + \gamma_2 x_{\text{dtc},i,t} x_{\text{rep},i,t}
-  + \gamma_3 x_{\text{peer},i,t} x_{\text{rep},i,t}
-  + \delta Z_{i,t}
-\right),
-\quad
-y_{i,t} \sim \text{NegBin}(\lambda_{i,t},\, r{=}5)
+\begin{split}
+\lambda_{i,t}
+  &= \exp\!\left(
+  \begin{aligned}
+  &\beta_0 + \sum_k \beta_{i,k} f_k(x_{i,k,t}) \\
+  &\quad + \gamma_1 x_{\text{rep},i,t} x_{\text{samp},i,t}
+          + \gamma_2 x_{\text{dtc},i,t} x_{\text{rep},i,t} \\
+  &\quad + \gamma_3 x_{\text{peer},i,t} x_{\text{rep},i,t}
+          + \delta Z_{i,t}
+  \end{aligned}
+  \right), \\
+y_{i,t}
+  &\sim \text{NegBin}(\lambda_{i,t},\, r{=}5).
+\end{split}
 \end{equation}
 where $f_k$ is a channel-specific response function (log, sqrt, or linear) and
 $\beta_{i,k}$ is drawn from a segment-specific multivariate normal
