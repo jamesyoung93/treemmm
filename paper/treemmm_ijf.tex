@@ -679,9 +679,9 @@ value applies.
   \label{fig:threshold}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[p]
   \centering
-  \includegraphics[width=\linewidth]{figures/fig12_calibration_deciles.pdf}
+  \includegraphics[width=0.90\linewidth,height=0.78\textheight,keepaspectratio]{figures/fig12_calibration_deciles.pdf}
   \caption{Predicted-vs-actual decile calibration plots for TreeMMM,
            GLMM-Naive, and GLMM-Oracle across all four DGPs. GLMM-Naive's
            pharma MAD = 23,977 (47$\times$ overestimate in top decile);
@@ -1331,7 +1331,7 @@ at which TreeMMM's advantage over GLMM-Naive disappears.
 \Cref{fig:power} visualizes the four DGP subplots on log-scaled $x$-axes with
 annotated crossover points.
 
-\begin{table}[ht]
+\begin{table}[p]
 \centering
 \small
 \caption{Attribution MAPE (\%) by model, dataset, and scale (single-seed,
@@ -1342,6 +1342,9 @@ annotated crossover points.
          multi-seed ($N{=}5$) averages are in \Cref{tab:attr2a} and differ by
          1--3 pp from these single-seed values.}
 \label{tab:power}
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{0.94}
 \begin{tabular}{@{}lllrrrr@{}}
 \toprule
 Dataset & Model & & $n{=}200$ & $n{=}500$ & $n{=}1500$ & $n{=}3000$ \\
@@ -1371,12 +1374,16 @@ Dataset & Model & & $n{=}200$ & $n{=}500$ & $n{=}1500$ & $n{=}3000$ \\
   & PyMC-Hier-Naive    & & 0.7 & 0.2 & 0.2 & 0.0  \\
 \bottomrule
 \end{tabular}
+\par}
 \medskip
-\small\textit{The pharma column shows a single-seed crossover at $n{=}500$
+\begin{minipage}{\linewidth}
+\footnotesize\itshape\raggedright
+The pharma column shows a single-seed crossover at $n{=}500$
 (TreeMMM 28.3 vs.\ GLMM-Naive 24.8) that recovers by $n{=}1500$; multi-seed
 re-runs at $n{=}3000$ ($N{=}5$, \Cref{tab:attr2a}) place TreeMMM safely
 ahead. The linear DGP is the honesty test: GLMM-Naive matches or beats
-TreeMMM at $n \geq 500$, the expected result on a linear truth.}
+TreeMMM at $n \geq 500$, the expected result on a linear truth.
+\end{minipage}
 \end{table}
 
 %%==========================================================================
