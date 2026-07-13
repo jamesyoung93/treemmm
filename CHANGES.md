@@ -285,8 +285,8 @@ Files: `paper/arxiv_submission/treemmm_ijf.tex`,
   (818,143 bytes), no undefined citations/references, and two overfull boxes
   (2.61108 pt and 0.85179 pt), both below the 5-pt gate.
 - H5 reports 2,689 normalized characters in the final abstract and therefore
-  remains blocked on Author approval of E2. The approved <=1,920-character draft
-  is queued but was not applied.
+  remains blocked on Author approval of E2. A compliant 1,147-character
+  `PROPOSED` draft is queued but was not applied.
 
 ### D1 markers
 
