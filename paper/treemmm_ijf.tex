@@ -16,11 +16,16 @@
 \usepackage[capitalize,noabbrev]{cleveref}  % \Cref, \cref
 \usepackage{longtable}         % wide/multi-page tables (pandoc default)
 \usepackage{array}             % column formatting
+\usepackage{tabularx}          % width-constrained tables
+\usepackage{rotating}          % landscape table floats
 \usepackage{multirow}          % multi-row cells
 % microtype omitted: font expansion error with MiKTeX 21.12 type1 fonts
 \usepackage{xcolor}            % colors (for code snippets)
 \usepackage{listings}          % code listings
 \usepackage{url}               % \url{}
+
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{C}{>{\centering\arraybackslash}X}
 
 %% hyperref settings compatible with elsarticle
 \hypersetup{
@@ -710,7 +715,7 @@ regression (GLMMDist-Naive, GLMMDist-Oracle --- statsmodels.GLM with the
 correct exponential-family likelihood per DGP). \Cref{tab:attr2a} covers the
 log1p-workaround family; \Cref{tab:attr2b} adds the distributional family.
 
-\begin{table}[ht]
+\begin{sidewaystable}[p]
 \centering
 \small
 \caption{Attribution Recovery (share-MAPE, mean $\pm$ SE across $N{=}5$ seeds,
@@ -733,7 +738,7 @@ Linear (Gaussian)& $0.4\pm0.1$  & $0.3\pm0.0$  & $0.3\pm0.0$  & $0.1\pm0.0$  & $
 \small\textit{Abbreviations: GLMM-N = GLMM-Naive; GLMM-O = GLMM-Oracle;
 PyMC-H-N = PyMC-Hier-Naive; PyMC-H-O = PyMC-Hier-Oracle;
 PyMC-Mktg = PyMC-Marketing. Linear SE not meaningful (near-zero MAPE).}
-\end{table}
+\end{sidewaystable}
 
 \begin{table}[ht]
 \centering
@@ -800,12 +805,12 @@ TreeMMM detected 5 of 6 planted interactions across the non-linear datasets
 shares and the precision-recall trade-off, respectively). GLMM-Naive cannot
 detect interactions it was not specified to include.
 
-\begin{table}[ht]
+\begin{sidewaystable}[p]
 \centering
-\small
+\footnotesize
 \caption{Interaction detection --- full confusion matrix across non-linear datasets.}
 \label{tab:interaction_detail}
-\begin{tabular}{@{}lllll@{}}
+\begin{tabularx}{\linewidth}{@{}lLccL@{}}
 \toprule
 Dataset & Planted Interaction & Strength & Detected & FP pairs flagged \\
 \midrule
@@ -819,8 +824,8 @@ SaaS   & \texttt{content\_downloads} $\times$ \texttt{event\_attendance} & 0.40 
 SaaS   & \texttt{csm\_meetings} $\times$ \texttt{sdr\_outreach} & 0.25 & Yes & --- \\
 SaaS   & (non-planted, 19 pairs) & --- & --- & 4 pairs (sdr/content/event/csm co-movement) \\
 \bottomrule
-\end{tabular}
-\end{table}
+\end{tabularx}
+\end{sidewaystable}
 
 \begin{table}[ht]
 \centering
@@ -883,14 +888,15 @@ selection is a meaningful modeling decision.
 \centering
 \caption{Distribution matching: correct vs.\ mismatched objective (TreeMMM).}
 \label{tab:distmatch}
-\begin{tabular}{@{}lllll@{}}
+\small
+\begin{tabularx}{\linewidth}{@{}LLCCC@{}}
 \toprule
 DGP & Correct Objective & Correct MAPE & Mismatched MAPE & Rel.\ Improvement \\
 \midrule
 Pharma (Count)    & Poisson  & 12.1\% & 24.5\% (Gaussian) & 50.5\% \\
 Linear (Gaussian) & Gaussian & 1.2\%  & 2.7\%  (Poisson)  & 56.3\% \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \subsection{Heterogeneous Customer Sensitivity Recovery}
@@ -1145,19 +1151,20 @@ likelihood-only.'' Results are in \Cref{tab:prior_sensitivity}, visualized in
 
 \begin{table}[ht]
 \centering
+\footnotesize
 \caption{Prior sensitivity sweep: worst-case attribution-share swing across a
          4$\times$ prior-variance bracket. All 12 fits converge cleanly.}
 \label{tab:prior_sensitivity}
-\begin{tabular}{@{}llllll@{}}
+\begin{tabularx}{\linewidth}{@{}LLLCCC@{}}
 \toprule
 Dataset & Worst-channel swing & Worst channel & Divergences & min ESS\_bulk & max $\hat{R}$ \\
 \midrule
-Pharma (NegBin)  & 0.0007 (0.07 pp) & \texttt{samples}     & 0 & 603   & 1.010 \\
-CPG (Tweedie)    & 0.0001 (0.01 pp) & \texttt{digital\_spend} & 0 & 2,203 & 1.010 \\
-SaaS (ZI-Gamma)  & 0.001  (0.1 pp)  & \texttt{sdr\_outreach}  & 0 & 3,312 & 1.010 \\
-Linear (Gaussian)& 0.0001 (0.01 pp) & \texttt{channel\_c}     & 0 & 9,282 & 1.000 \\
+Pharma (NegBin)  & 0.0007 (0.07 pp) & \nolinkurl{samples}     & 0 & 603   & 1.010 \\
+CPG (Tweedie)    & 0.0001 (0.01 pp) & \nolinkurl{digital_spend} & 0 & 2,203 & 1.010 \\
+SaaS (ZI-Gamma)  & 0.001  (0.1 pp)  & \nolinkurl{sdr_outreach}  & 0 & 3,312 & 1.010 \\
+Linear (Gaussian)& 0.0001 (0.01 pp) & \nolinkurl{channel_c}     & 0 & 9,282 & 1.000 \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 All twelve fits converge cleanly: zero divergences, $\hat{R} \leq 1.01$, and
@@ -1282,7 +1289,7 @@ Channel & Adstock decay & Saturation form & Effect weight \\
 \end{tabular}
 \end{table}
 
-\begin{table}[ht]
+\begin{sidewaystable}[p]
 \centering
 \small
 \caption{Geo-panel comparison: Attribution MAPE (\%), Rank $\rho$, $R^2$, and WMAPE
@@ -1306,7 +1313,7 @@ Meridian$^\ddagger$               & 57.0  & 1.00 & --- & --- & 1,734 & EagerTens
 Attribution shares via \texttt{Analyzer.incremental\_outcome().numpy()}:
 tv = 70.5\% (true 44.9\%), digital = 27.1\% (true 37.5\%), trade = 2.4\% (true 17.5\%).
 Rank correct (tv $>$ digital $>$ trade). $R^2$/WMAPE not extractable.
-\end{table}
+\end{sidewaystable}
 
 Even on PyMC-Marketing's home turf (correct parametric form, 52 time points),
 aggregating 200 regions to a single time-series discards the cross-regional
