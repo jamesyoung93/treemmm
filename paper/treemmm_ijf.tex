@@ -1707,14 +1707,130 @@ demonstration code are available at
 MIT License.
 
 %%==========================================================================
-\section{Methodology}
+%% Declaration of generative AI and AI-assisted technologies
+%%==========================================================================
+
+\section*{Declaration of generative AI and AI-assisted technologies in the
+manuscript preparation process}
+
+During the preparation of this work, the author used OpenAI ChatGPT and
+OpenAI Codex to assist with manuscript organization, language editing, code and
+document-quality checks, reference checking, and numerical consistency review.
+The author also used Anthropic Claude for review assistance.
+No generative AI tools were used to fabricate or alter research data, benchmark
+results, or result figures. After using these tools, the author reviewed and
+edited the content as needed and takes full responsibility for the content of
+the manuscript.
+
+%%==========================================================================
+%% Bibliography
+%%==========================================================================
+
+\bibliographystyle{elsarticle-num}
+\bibliography{refs}
+
+%%==========================================================================
+%% Appendix A: Exploratory Neural MMM Comparison
+%%==========================================================================
+
+\appendix
+
+\section{Exploratory Neural MMM Comparison (DeepCausalMMM)}
+\label{app:neural}
+
+We include an exploratory comparison with DeepCausalMMM
+\cite{tirumala2025deepcausalmmm}, a neural MMM combining GRU temporal encoding,
+learned DAG structure, Hill saturation curves, and time-varying coefficients.
+This appendix is presented separately because structural limitations in the
+evaluation design make it less directly comparable to the regression baselines
+in the main text.
+
+\subsection{Configuration and Data Reshaping}
+\label{app:neural:config}
+
+DeepCausalMMM was designed for DMA-level aggregated data ($\sim$190 geographic
+regions $\times$ 109 weeks). Our benchmark uses customer-level panel data
+(3,000 entities $\times$ 36 periods). To create a comparison, we reshaped the
+panel data into 3D tensors $[\text{regions}, \text{timesteps}, \text{channels}]$
+by treating each customer as a ``region.'' Training used DeepCausalMMM's
+\texttt{UnifiedDataPipeline} and \texttt{ModelTrainer} with reduced
+hyperparameters (\Cref{tab:app_deepcausal_config}).
+
+\begin{table}[ht]
+\centering
+\caption{DeepCausalMMM configuration vs.\ published defaults.}
+\label{tab:app_deepcausal_config}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Parameter & Default & Our Config & Reason \\
+\midrule
+Epochs          & 1,500 & 800 & Benchmark speed \\
+Hidden dim      & 280   & 128 & Fewer channels \\
+Patience        & 300   & 200 & Proportional reduction \\
+Regions         & 190 DMAs & 500 (subsampled) & Panel has 3,000 entities \\
+Time periods    & 109 weeks & 36 months & Benchmark design \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Fairness Caveats}
+\label{app:neural:caveats}
+
+This comparison favors TreeMMM in several structural ways:
+\begin{enumerate}
+\item \textbf{Data format mismatch}: customers-as-regions violates
+  DeepCausalMMM's geographic aggregation design.
+\item \textbf{Hyperparameter downgrading}: five key hyperparameters were
+  reduced; no Optuna tuning was performed for DeepCausalMMM.
+\item \textbf{Subsampling}: only 500 of 3,000 customers were used.
+\item \textbf{No distribution awareness}: DeepCausalMMM uses Huber loss (not
+  matched to count or zero-inflated outcomes).
+\end{enumerate}
+
+A fair comparison would require (a) geographic-level time-series aggregation,
+(b) default hyperparameters with full tuning, and (c) longer time series
+(100+ periods).
+
+\subsection{Results}
+\label{app:neural:results}
+
+\begin{table}[ht]
+\centering
+\caption{Exploratory neural MMM comparison. DeepCausalMMM uses a 500-customer
+         internal subsample; TreeMMM rows are the seed-42 reference benchmark
+         from \Cref{tab:attr2b}.}
+\label{tab:app_deepcausal}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Dataset & TreeMMM MAPE & DeepCausalMMM MAPE & DCausal $R^2$ & DCausal Rank $\rho$ \\
+\midrule
+Pharma (NegBin)  & 15.6\% & 91.5\%  & 0.12  & 0.89 \\
+CPG (Tweedie)    & 24.5\% & 112.5\% & $-0.02$ & 0.10 \\
+SaaS (ZI-Gamma)  & 14.7\% & 21.9\%  & $-0.05$ & 0.90 \\
+Linear (Gaussian)& 0.3\%  & 62.4\%  & $-0.07$ & 1.00 \\
+\midrule
+\textbf{Non-linear avg} & \textbf{18.3\%} & 75.3\% & 0.02 & 0.63 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+DeepCausalMMM shows high MAPE on count-valued (pharma: 91.5\%) and Tweedie
+(CPG: 112.5\%) outcomes, suggesting its Huber loss is poorly matched to these
+distributions. On SaaS (continuous-like), it performs more competitively
+(21.9\% vs.\ TreeMMM's 14.7\%). On the linear DGP, DeepCausalMMM introduces
+spurious non-linearity (62.4\% MAPE), suggesting optimization difficulties.
+Rank correlation on pharma reaches 0.89 in this benchmark, so the architecture
+can recover relative channel importance even when absolute shares are poorly
+calibrated. This is, to our knowledge, the first evaluation of any neural MMM
+against known attribution ground truth.
+
+%%==========================================================================
+\section{Methods Detail}
 \label{sec:methods}
 %%==========================================================================
 
-AI-assisted coding support was used for repository maintenance, reproducibility
-checks, manuscript tooling, and numerical-consistency review. All benchmark
-data, result tables, figures, and package code paths used for the reported
-analyses were reviewed and validated by the author.
 
 \subsection{Distribution-Aware Objective Selection}
 \label{sec:methods:objective}
@@ -1879,124 +1995,5 @@ Non-linear MAPE  & 22.7\% $\pm$ 0.3\%   & 18.1\% $\pm$ 0.3\%        & 75.1\% $\p
 \bottomrule
 \end{tabular}
 \end{table}
-
-%%==========================================================================
-%% Declaration of generative AI and AI-assisted technologies
-%%==========================================================================
-
-\section*{Declaration of generative AI and AI-assisted technologies in the
-manuscript preparation process}
-
-During the preparation of this work, the author used OpenAI ChatGPT and
-OpenAI Codex to assist with manuscript organization, language editing, code and
-document-quality checks, reference checking, and numerical consistency review.
-No generative AI tools were used to fabricate or alter research data, benchmark
-results, or result figures. After using these tools, the author reviewed and
-edited the content as needed and takes full responsibility for the content of
-the manuscript.
-
-%%==========================================================================
-%% Bibliography
-%%==========================================================================
-
-\bibliographystyle{elsarticle-num}
-\bibliography{refs}
-
-%%==========================================================================
-%% Appendix A: Exploratory Neural MMM Comparison
-%%==========================================================================
-
-\appendix
-
-\section{Exploratory Neural MMM Comparison (DeepCausalMMM)}
-\label{app:neural}
-
-We include an exploratory comparison with DeepCausalMMM
-\cite{tirumala2025deepcausalmmm}, a neural MMM combining GRU temporal encoding,
-learned DAG structure, Hill saturation curves, and time-varying coefficients.
-This appendix is presented separately because structural limitations in the
-evaluation design make it less directly comparable to the regression baselines
-in the main text.
-
-\subsection{Configuration and Data Reshaping}
-\label{app:neural:config}
-
-DeepCausalMMM was designed for DMA-level aggregated data ($\sim$190 geographic
-regions $\times$ 109 weeks). Our benchmark uses customer-level panel data
-(3,000 entities $\times$ 36 periods). To create a comparison, we reshaped the
-panel data into 3D tensors $[\text{regions}, \text{timesteps}, \text{channels}]$
-by treating each customer as a ``region.'' Training used DeepCausalMMM's
-\texttt{UnifiedDataPipeline} and \texttt{ModelTrainer} with reduced
-hyperparameters (\Cref{tab:app_deepcausal_config}).
-
-\begin{table}[ht]
-\centering
-\caption{DeepCausalMMM configuration vs.\ published defaults.}
-\label{tab:app_deepcausal_config}
-\begin{tabular}{@{}llll@{}}
-\toprule
-Parameter & Default & Our Config & Reason \\
-\midrule
-Epochs          & 1,500 & 800 & Benchmark speed \\
-Hidden dim      & 280   & 128 & Fewer channels \\
-Patience        & 300   & 200 & Proportional reduction \\
-Regions         & 190 DMAs & 500 (subsampled) & Panel has 3,000 entities \\
-Time periods    & 109 weeks & 36 months & Benchmark design \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Fairness Caveats}
-\label{app:neural:caveats}
-
-This comparison favors TreeMMM in several structural ways:
-\begin{enumerate}
-\item \textbf{Data format mismatch}: customers-as-regions violates
-  DeepCausalMMM's geographic aggregation design.
-\item \textbf{Hyperparameter downgrading}: five key hyperparameters were
-  reduced; no Optuna tuning was performed for DeepCausalMMM.
-\item \textbf{Subsampling}: only 500 of 3,000 customers were used.
-\item \textbf{No distribution awareness}: DeepCausalMMM uses Huber loss (not
-  matched to count or zero-inflated outcomes).
-\end{enumerate}
-
-A fair comparison would require (a) geographic-level time-series aggregation,
-(b) default hyperparameters with full tuning, and (c) longer time series
-(100+ periods).
-
-\subsection{Results}
-\label{app:neural:results}
-
-\begin{table}[ht]
-\centering
-\caption{Exploratory neural MMM comparison. DeepCausalMMM uses a 500-customer
-         internal subsample; TreeMMM rows are the seed-42 reference benchmark
-         from \Cref{tab:attr2b}.}
-\label{tab:app_deepcausal}
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{@{}lrrrr@{}}
-\toprule
-Dataset & TreeMMM MAPE & DeepCausalMMM MAPE & DCausal $R^2$ & DCausal Rank $\rho$ \\
-\midrule
-Pharma (NegBin)  & 15.6\% & 91.5\%  & 0.12  & 0.89 \\
-CPG (Tweedie)    & 24.5\% & 112.5\% & $-0.02$ & 0.10 \\
-SaaS (ZI-Gamma)  & 14.7\% & 21.9\%  & $-0.05$ & 0.90 \\
-Linear (Gaussian)& 0.3\%  & 62.4\%  & $-0.07$ & 1.00 \\
-\midrule
-\textbf{Non-linear avg} & \textbf{18.3\%} & 75.3\% & 0.02 & 0.63 \\
-\bottomrule
-\end{tabular}
-}
-\end{table}
-
-DeepCausalMMM shows high MAPE on count-valued (pharma: 91.5\%) and Tweedie
-(CPG: 112.5\%) outcomes, suggesting its Huber loss is poorly matched to these
-distributions. On SaaS (continuous-like), it performs more competitively
-(21.9\% vs.\ TreeMMM's 14.7\%). On the linear DGP, DeepCausalMMM introduces
-spurious non-linearity (62.4\% MAPE), suggesting optimization difficulties.
-Rank correlation on pharma reaches 0.89 in this benchmark, so the architecture
-can recover relative channel importance even when absolute shares are poorly
-calibrated. This is, to our knowledge, the first evaluation of any neural MMM
-against known attribution ground truth.
 
 \end{document}
