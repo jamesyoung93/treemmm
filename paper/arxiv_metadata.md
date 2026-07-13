@@ -35,7 +35,7 @@ https://github.com/jamesyoung93/treemmm.
 
 ## Comments Line (arxiv "comments" field)
 
-33 pages, 13 figures, 9 tables. Code and benchmark data: https://github.com/jamesyoung93/treemmm. Package v0.2.1. Submitted to International Journal of Forecasting.
+33 pages, 13 figures, 9 tables. Code and benchmark data: https://github.com/jamesyoung93/treemmm. Package v0.3.1 (attribution benchmark core: v0.2.1). Submitted to International Journal of Forecasting.
 
 ## Primary Subject Class
 
@@ -72,6 +72,6 @@ Creative Commons Attribution 4.0 (CC BY 4.0)
 - [ ] Paste abstract from this file (plain text version above)
 - [ ] Set "Comments" line (see above)
 - [ ] Verify compiled PDF on arxiv preview (arxiv re-compiles from source)
-- [ ] Mint Zenodo DOI for v0.2.1 at https://zenodo.org (create new upload, link to GitHub tag)
+- [ ] Mint Zenodo DOI for v0.3.1 at https://zenodo.org (create new upload, link to GitHub tag)
 - [ ] Update "TO BE MINTED" placeholder in treemmm_ijf.tex Code Availability section with Zenodo DOI
 - [ ] Recompile and re-tar after Zenodo DOI is known, before final submission

@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Reproducible budget-reallocation script and notebook walkthroughs now call
   both `reallocate` and `reallocate_curve` on the seeded pharma demo.
+- `CITATION.cff` supplies machine-readable software citation metadata and an
+  explicit arXiv identifier placeholder for the Author to fill at announcement.
 
 ### Changed
 
@@ -23,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cost model.
 - The pharma quickstart now states the outputs it actually produces, pins its
   random seed, and prints portably on Windows legacy console encodings.
+- Reproduction and arXiv-support metadata now identify the current v0.3.1
+  package while retaining the v0.2.1 attribution-core provenance.
 
 ### Removed
 

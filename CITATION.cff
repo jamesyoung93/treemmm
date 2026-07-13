@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use TreeMMM, please cite it using the metadata in this file."
+title: "TreeMMM"
+abstract: "Tree-based market mix modeling with SHAP attribution."
+type: software
+authors:
+  - family-names: "Young"
+    given-names: "James"
+version: 0.3.1
+date-released: 2026-06-14
+repository-code: "https://github.com/jamesyoung93/treemmm"
+url: "https://github.com/jamesyoung93/treemmm"
+license: MIT
+identifiers:
+  - type: other
+    value: "arXiv:ARXIV_ID"
+    description: "Author placeholder: replace ARXIV_ID after the arXiv announcement."
