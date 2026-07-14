@@ -1,0 +1,314 @@
+TY  - CPAPER
+ID  - akiba2019optuna
+AU  - Akiba, Takuya
+AU  - Sano, Shotaro
+AU  - Yanase, Toshihiko
+AU  - Ohta, Takeru
+AU  - Koyama, Masanori
+TI  - Optuna: A Next-generation Hyperparameter Optimization Framework
+T2  - Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining
+SP  - 2623
+EP  - 2631
+PY  - 2019
+PB  - ACM
+DO  - 10.1145/3292500.3330701
+UR  - https://doi.org/10.1145/3292500.3330701
+N1  - arXiv:1907.10902
+ER  -
+
+TY  - JOUR
+ID  - broadbent1979oneway
+AU  - Broadbent, Simon
+TI  - One Way TV Advertisements Work
+JO  - Journal of the Market Research Society
+VL  - 21
+IS  - 3
+SP  - 139
+EP  - 166
+PY  - 1979
+ER  -
+
+TY  - RPRT
+ID  - chan2017challenges
+AU  - Chan, David
+AU  - Perry, Michael
+TI  - Challenges and Opportunities in Media Mix Modeling
+PY  - 2017
+PB  - Google Inc.
+UR  - https://research.google/pubs/challenges-and-opportunities-in-media-mix-modeling/
+ER  -
+
+TY  - CPAPER
+ID  - chen2016xgboost
+AU  - Chen, Tianqi
+AU  - Guestrin, Carlos
+TI  - XGBoost: A Scalable Tree Boosting System
+T2  - Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining
+SP  - 785
+EP  - 794
+PY  - 2016
+PB  - ACM
+DO  - 10.1145/2939672.2939785
+UR  - https://doi.org/10.1145/2939672.2939785
+ER  -
+
+TY  - CPAPER
+ID  - gong2024causalmmm
+AU  - Gong, Chang
+AU  - Yao, Di
+AU  - Zhang, Lei
+AU  - Chen, Sheng
+AU  - Li, Wenbin
+AU  - Su, Yueyang
+AU  - Bi, Jingping
+TI  - CausalMMM: Learning Causal Structure for Marketing Mix Modeling
+T2  - Proceedings of the 17th ACM International Conference on Web Search and Data Mining
+SP  - 238
+EP  - 246
+PY  - 2024
+PB  - ACM
+DO  - 10.1145/3616855.3635766
+UR  - https://doi.org/10.1145/3616855.3635766
+ER  -
+
+TY  - CPAPER
+ID  - heskes2020causal
+AU  - Heskes, Tom
+AU  - Sijben, Evi
+AU  - Bucur, Ioan Gabriel
+AU  - Claassen, Tom
+TI  - Causal Shapley Values: Exploiting Causal Knowledge to Explain Individual Predictions of Complex Models
+T2  - Advances in Neural Information Processing Systems
+VL  - 33
+SP  - 4778
+EP  - 4789
+PY  - 2020
+PB  - Curran Associates, Inc.
+UR  - https://proceedings.neurips.cc/paper_files/paper/2020/file/32e54441e6382a7fbacbbbaf3c450059-Paper.pdf
+ER  -
+
+TY  - CPAPER
+ID  - janzing2020feature
+AU  - Janzing, Dominik
+AU  - Minorics, Lenon
+AU  - Bloebaum, Patrick
+A2  - Chiappa, Silvia
+A2  - Calandra, Roberto
+TI  - Feature relevance quantification in explainable AI: A causal problem
+T2  - Proceedings of the Twenty Third International Conference on Artificial Intelligence and Statistics
+T3  - Proceedings of Machine Learning Research
+VL  - 108
+SP  - 2907
+EP  - 2916
+PY  - 2020
+DA  - 2020/08/26
+PB  - PMLR
+UR  - https://proceedings.mlr.press/v108/janzing20a.html
+ER  -
+
+TY  - RPRT
+ID  - jin2017bayesian
+AU  - Jin, Yuxue
+AU  - Wang, Yueqing
+AU  - Sun, Yunting
+AU  - Chan, David
+AU  - Koehler, Jim
+TI  - Bayesian Methods for Media Mix Modeling with Carryover and Shape Effects
+PY  - 2017
+PB  - Google Inc.
+UR  - https://research.google/pubs/bayesian-methods-for-media-mix-modeling-with-carryover-and-shape-effects/
+ER  -
+
+TY  - CPAPER
+ID  - ke2017lightgbm
+AU  - Ke, Guolin
+AU  - Meng, Qi
+AU  - Finley, Thomas
+AU  - Wang, Taifeng
+AU  - Chen, Wei
+AU  - Ma, Weidong
+AU  - Ye, Qiwei
+AU  - Liu, Tie-Yan
+TI  - LightGBM: A Highly Efficient Gradient Boosting Decision Tree
+T2  - Advances in Neural Information Processing Systems
+VL  - 30
+SP  - 3146
+EP  - 3154
+PY  - 2017
+PB  - Curran Associates, Inc.
+UR  - https://proceedings.neurips.cc/paper_files/paper/2017/hash/6449f44a102fde848669bdd9eb6b76fa-Abstract.html
+ER  -
+
+TY  - JOUR
+ID  - little1979aggregate
+AU  - Little, John D. C.
+TI  - Feature Article—Aggregate Advertising Models: The State of the Art
+JO  - Operations Research
+VL  - 27
+IS  - 4
+SP  - 629
+EP  - 667
+PY  - 1979
+DO  - 10.1287/opre.27.4.629
+UR  - https://doi.org/10.1287/opre.27.4.629
+ER  -
+
+TY  - CPAPER
+ID  - lundberg2017unified
+AU  - Lundberg, Scott M.
+AU  - Lee, Su-In
+TI  - A Unified Approach to Interpreting Model Predictions
+T2  - Advances in Neural Information Processing Systems
+VL  - 30
+SP  - 4765
+EP  - 4774
+PY  - 2017
+PB  - Curran Associates, Inc.
+UR  - https://proceedings.neurips.cc/paper_files/paper/2017/hash/8a20a8621978632d76c43dfd28b67767-Abstract.html
+ER  -
+
+TY  - JOUR
+ID  - lundberg2020trees
+AU  - Lundberg, Scott M.
+AU  - Erion, Gabriel
+AU  - Chen, Hugh
+AU  - DeGrave, Alex
+AU  - Prutkin, Jordan M.
+AU  - Nair, Bala
+AU  - Katz, Ronit
+AU  - Himmelfarb, Jonathan
+AU  - Bansal, Nisha
+AU  - Lee, Su-In
+TI  - From local explanations to global understanding with explainable AI for trees
+JO  - Nature Machine Intelligence
+VL  - 2
+IS  - 1
+SP  - 56
+EP  - 67
+PY  - 2020
+DO  - 10.1038/s42256-019-0138-9
+UR  - https://doi.org/10.1038/s42256-019-0138-9
+ER  -
+
+TY  - JOUR
+ID  - manchanda2004response
+AU  - Manchanda, Puneet
+AU  - Rossi, Peter E.
+AU  - Chintagunta, Pradeep K.
+TI  - Response Modeling with Nonrandom Marketing-Mix Variables
+JO  - Journal of Marketing Research
+VL  - 41
+IS  - 4
+SP  - 467
+EP  - 478
+PY  - 2004
+DO  - 10.1509/jmkr.41.4.467.47005
+UR  - https://doi.org/10.1509/jmkr.41.4.467.47005
+ER  -
+
+TY  - COMP
+ID  - meridian2024google
+AU  - Google Meridian Marketing Mix Modeling Team
+TI  - Meridian: Marketing Mix Modeling
+PY  - 2026
+M3  - Computer software
+UR  - https://github.com/google/meridian
+ER  -
+
+TY  - JOUR
+ID  - mulc2025nnn
+AU  - Mulc, Thomas
+AU  - Anderson, Mike
+AU  - Cubre, Paul
+AU  - Zhang, Huikun
+AU  - Liu, Ivy
+AU  - Kumar, Saket
+TI  - NNN: Next-Generation Neural Networks for Marketing Measurement
+JO  - arXiv
+PY  - 2025
+M3  - Preprint
+DO  - 10.48550/arXiv.2504.06212
+UR  - https://arxiv.org/abs/2504.06212
+ER  -
+
+TY  - CPAPER
+ID  - prokhorenkova2018catboost
+AU  - Prokhorenkova, Liudmila
+AU  - Gusev, Gleb
+AU  - Vorobev, Aleksandr
+AU  - Dorogush, Anna Veronika
+AU  - Gulin, Andrey
+TI  - CatBoost: unbiased boosting with categorical features
+T2  - Advances in Neural Information Processing Systems
+VL  - 31
+SP  - 6638
+EP  - 6648
+PY  - 2018
+PB  - Curran Associates, Inc.
+UR  - https://proceedings.neurips.cc/paper_files/paper/2018/hash/14491b756b3a51daac41c24863285549-Abstract.html
+ER  -
+
+TY  - COMP
+ID  - pymcmarketing2023
+AU  - PyMC Labs
+TI  - PyMC-Marketing
+PY  - 2026
+M3  - Computer software
+N1  - Version 0.19.4
+UR  - https://github.com/pymc-labs/pymc-marketing/tree/0.19.4
+ER  -
+
+TY  - JOUR
+ID  - rozenfeld2024causal
+AU  - Rozenfeld, Ilya
+TI  - Causal Analysis of Shapley Values: Conditional vs. Marginal
+JO  - arXiv
+PY  - 2024
+M3  - Preprint
+DO  - 10.48550/arXiv.2409.06157
+UR  - https://arxiv.org/abs/2409.06157
+ER  -
+
+TY  - JOUR
+ID  - runge2024robyn
+AU  - Runge, Julian
+AU  - Skokan, Igor
+AU  - Zhou, Gufeng
+AU  - Pauwels, Koen
+TI  - Packaging Up Media Mix Modeling: An Introduction to Robyn's Open-Source Approach
+JO  - arXiv
+PY  - 2024
+M3  - Preprint
+DO  - 10.48550/arXiv.2403.14674
+UR  - https://arxiv.org/abs/2403.14674
+ER  -
+
+TY  - CPAPER
+ID  - sundararajan2020many
+AU  - Sundararajan, Mukund
+AU  - Najmi, Amir
+TI  - The Many Shapley Values for Model Explanation
+T2  - Proceedings of the 37th International Conference on Machine Learning
+T3  - Proceedings of Machine Learning Research
+VL  - 119
+SP  - 9269
+EP  - 9278
+PY  - 2020
+PB  - PMLR
+UR  - https://proceedings.mlr.press/v119/sundararajan20b.html
+N1  - arXiv:1908.08474
+ER  -
+
+TY  - JOUR
+ID  - tirumala2025deepcausalmmm
+AU  - Puttaparthi Tirumala, Aditya
+TI  - DeepCausalMMM: A Deep Learning Framework for Marketing Mix Modeling with Causal Structure Learning
+JO  - Journal of Open Source Software
+VL  - 11
+IS  - 120
+SP  - 9914
+PY  - 2026
+PB  - The Open Journal
+DO  - 10.21105/joss.09914
+UR  - https://doi.org/10.21105/joss.09914
+ER  -
